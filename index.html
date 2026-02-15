@@ -2,27 +2,20 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Orbital Chess | AI Protocol</title>
+    <title>Orbital Chess | Neural Arena</title>
     <style>
         :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
         body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
-        
-        #sidebar { 
-            width: 320px; background: var(--panel); display: flex; flex-direction: column; 
-            padding: 20px; border-right: 2px solid #2d2d35; box-shadow: 5px 0 25px rgba(0,0,0,0.5); 
-        }
+        #sidebar { width: 320px; background: var(--panel); display: flex; flex-direction: column; padding: 20px; border-right: 2px solid #2d2d35; }
         .header h1 { font-size: 1rem; letter-spacing: 4px; color: var(--accent); text-align: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-
         #game-info { background: #25252b; padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid var(--accent); margin-bottom: 20px; }
         #timer-box { font-size: 2rem; font-weight: bold; color: var(--accent); }
-        .turn-label { font-size: 0.8rem; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-
+        .turn-label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
         canvas { flex-grow: 1; cursor: crosshair; background: #000; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 4px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: auto; }
-        .btn:hover { opacity: 0.8; transform: translateY(-2px); }
-        
-        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 4px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 100%; }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .start-box { text-align:center; background:#1a1a1e; padding:50px; border-radius:15px; border:1px solid var(--accent); }
+        .side-select { display: flex; gap: 15px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -30,70 +23,67 @@
     <div id="overlay">
         <div class="start-box">
             <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
-            <p style="color:#888; margin-bottom:30px;">NEURAL LINK READY: VS AI_CORE</p>
-            <button class="btn" style="width:200px" onclick="startGame()">INITIALIZE MATCH</button>
+            <p style="color:#888;">SELECT YOUR COMMAND SIDE</p>
+            <div class="side-select">
+                <button class="btn" onclick="startGame('w')">PLAY AS WHITE</button>
+                <button class="btn" style="background:#fff; color:#000;" onclick="startGame('b')">PLAY AS BLACK</button>
+            </div>
         </div>
     </div>
 
     <div id="sidebar">
         <div class="header"><h1>VANGUARD AI</h1></div>
         <div id="game-info">
+            <div id="player-tag" style="font-size: 0.9rem; color: var(--accent); margin-bottom: 5px;">YOU: WHITE</div>
             <div class="turn-label" id="turn-text">OFFLINE</div>
             <div id="timer-box">60s</div>
         </div>
-        <p style="font-size: 0.8rem; color: #666; line-height: 1.6;">
-            <b>COMMANDER:</b> White pieces.<br>
-            <b>ENGINE:</b> Black pieces.<br><br>
-            The board is a 12x16 toroidal grid. Pieces moving off one edge wrap around to the other.
-        </p>
-        <button class="btn" onclick="location.reload()">RESTART PROTOCOL</button>
+        <button class="btn" onclick="location.reload()">RESTART MATCH</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
 
 <script>
-    // --- 1. SETUP ---
     const ROWS = 12, COLS = 16, CELL = 60;
-    let board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
-    let turn = 'w', timerInterval, timeLeft = 60;
+    let board = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60;
     let selected = null, validMoves = [];
+    
+    // AI Valuation Table
+    const VALS = { 'P': 10, 'N': 30, 'B': 30, 'R': 50, 'Q': 90, 'K': 900 };
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    function startGame() {
+    function startGame(side) {
+        myColor = side;
         document.getElementById('overlay').style.display = 'none';
+        document.getElementById('player-tag').innerText = "YOU: " + (side === 'w' ? "WHITE" : "BLACK");
         initBoard();
         resetTimer();
+        if(turn !== myColor) makeAIMove();
         requestAnimationFrame(render);
     }
 
     function initBoard() {
-        // Clear board
         board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
-        // Standard layout centered on 16 cols (start at col 4)
         const layout = ["R","N","B","Q","K","B","N","R"];
         layout.forEach((p, i) => {
-            board[2][4+i] = "b"+p; // AI Back Rank
-            board[3][4+i] = "bP";  // AI Pawns
-            board[9][4+i] = "w"+p; // Player Back Rank
-            board[8][4+i] = "wP";  // Player Pawns
+            board[2][4+i] = "b"+p; board[3][4+i] = "bP";
+            board[9][4+i] = "w"+p; board[8][4+i] = "wP";
         });
     }
 
-    // --- 2. GAME LOGIC & WRAPPING ---
-    function getMoves(r, c) {
-        const piece = board[r][c]; if(!piece) return [];
+    function getMoves(r, c, b = board) {
+        const piece = b[r][c]; if(!piece) return [];
         const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1;
 
         if(type==='P') {
             let nr = (r+fwd+ROWS)%ROWS; 
-            if(!board[nr][c]) moves.push({r:nr, c:c});
-            // Captures
+            if(!b[nr][c]) moves.push({r:nr, c:c});
             [-1, 1].forEach(dc => {
                 let nc = (c+dc+COLS)%COLS;
-                if(board[nr][nc] && board[nr][nc][0] !== col) moves.push({r:nr, c:nc});
+                if(b[nr][nc] && b[nr][nc][0] !== col) moves.push({r:nr, c:nc});
             });
         } else {
             const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
@@ -103,65 +93,71 @@
             const lim = (type==='K' || type==='N') ? 2 : 16;
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
-                    let nr = (r + dr*i + ROWS) % ROWS;
-                    let nc = (c + dc*i + COLS) % COLS;
-                    if(board[nr][nc] && board[nr][nc][0] === col) break;
+                    let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
+                    if(b[nr][nc] && b[nr][nc][0] === col) break;
                     moves.push({r:nr, c:nc});
-                    if(board[nr][nc]) break;
+                    if(b[nr][nc]) break;
                 }
             });
         }
         return moves;
     }
 
+    // FAST AI: Uses a simple capture-priority heuristic
     function makeAIMove() {
-        document.getElementById('turn-text').innerText = "AI THINKING...";
+        const aiColor = (myColor === 'w' ? 'b' : 'w');
         setTimeout(() => {
-            let all = [];
+            let moves = [];
             for(let r=0; r<ROWS; r++) {
                 for(let c=0; c<COLS; c++) {
-                    if(board[r][c] && board[r][c][0]==='b') {
-                        getMoves(r,c).forEach(m => all.push({fr:r, fc:c, tr:m.r, tc:m.c}));
+                    if(board[r][c] && board[r][c][0] === aiColor) {
+                        getMoves(r,c).forEach(m => {
+                            let score = 0;
+                            if(board[m.r][m.c]) score = VALS[board[m.r][m.c][1]];
+                            moves.push({fr:r, fc:c, tr:m.r, tc:m.c, score: score});
+                        });
                     }
                 }
             }
-            if(all.length) {
-                // Simplified AI: Randomly picks a move
-                const m = all[Math.floor(Math.random()*all.length)];
+            // Sort by capture value + small randomness
+            moves.sort((a, b) => (b.score + Math.random()) - (a.score + Math.random()));
+            if(moves.length) {
+                const m = moves[0];
                 board[m.tr][m.tc] = board[m.fr][m.fc];
                 board[m.fr][m.fc] = "";
-                turn = 'w';
+                turn = myColor;
                 resetTimer();
             }
-        }, 1000);
+        }, 300); // 300ms delay for "thinking" feel, logic is instant
     }
 
     function resetTimer() {
         clearInterval(timerInterval);
         timeLeft = 60;
-        document.getElementById('turn-text').innerText = (turn === 'w') ? "YOUR TURN" : "AI TURN";
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR TURN" : "AI THINKING...";
         timerInterval = setInterval(() => {
             timeLeft--;
             document.getElementById('timer-box').innerText = timeLeft + "s";
-            if(timeLeft <= 0) turn = (turn === 'w') ? 'b' : 'w'; 
+            if(timeLeft <= 0) { turn = (turn === 'w') ? 'b' : 'w'; if(turn !== myColor) makeAIMove(); }
         }, 1000);
     }
 
-    // --- 3. RENDERING ---
     function render() {
         canvas.width = window.innerWidth - 320;
         canvas.height = window.innerHeight;
         ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        const ox = (canvas.width - COLS*CELL)/2;
-        const oy = (canvas.height - ROWS*CELL)/2;
+        const ox = (canvas.width - COLS*CELL)/2, oy = (canvas.height - ROWS*CELL)/2;
 
         for(let r=0; r<ROWS; r++) {
             for(let c=0; c<COLS; c++) {
-                const x = c * CELL + ox, y = r * CELL + oy;
+                // PERSPECTIVE FLIP
+                let dr = (myColor === 'b') ? (ROWS - 1 - r) : r;
+                let dc = (myColor === 'b') ? (COLS - 1 - c) : c;
+
+                const x = dc * CELL + ox, y = dr * CELL + oy;
                 ctx.fillStyle = (r + c) % 2 === 0 ? "#2a2a2e" : "#1a1a1e";
                 ctx.fillRect(x, y, CELL, CELL);
-                ctx.strokeStyle = "#333"; ctx.strokeRect(x,y,CELL,CELL);
 
                 if(selected && selected.r === r && selected.c === c) {
                     ctx.fillStyle = "rgba(212,175,55,0.3)"; ctx.fillRect(x,y,CELL,CELL);
@@ -169,13 +165,13 @@
                 
                 validMoves.forEach(m => {
                     if(m.r === r && m.c === c) {
-                        ctx.fillStyle = "rgba(255,255,255,0.1)";
+                        ctx.fillStyle = "rgba(255,255,255,0.15)";
                         ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 5, 0, Math.PI*2); ctx.fill();
                     }
                 });
 
                 if(board[r][c]) {
-                    ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : varAccent();
+                    ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#d4af37";
                     ctx.font = "30px Arial"; ctx.textAlign = "center";
                     ctx.fillText(PIECES[board[r][c]], x + CELL/2, y + CELL/2 + 10);
                 }
@@ -184,15 +180,13 @@
         requestAnimationFrame(render);
     }
 
-    function varAccent() { return getComputedStyle(document.documentElement).getPropertyValue('--accent'); }
-
     canvas.addEventListener('mousedown', e => {
-        if(turn !== 'w') return;
+        if(turn !== myColor) return;
         const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left - (canvas.width - COLS*CELL)/2;
-        const my = e.clientY - rect.top - (canvas.height - ROWS*CELL)/2;
-        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
+        let c = Math.floor((e.clientX - rect.left - (canvas.width - COLS*CELL)/2) / CELL);
+        let r = Math.floor((e.clientY - rect.top - (canvas.height - ROWS*CELL)/2) / CELL);
 
+        if(myColor === 'b') { r = (ROWS-1)-r; c = (COLS-1)-c; }
         if(r<0 || r>=ROWS || c<0 || c>=COLS) return;
 
         const move = validMoves.find(m => m.r === r && m.c === c);
@@ -200,10 +194,10 @@
             board[r][c] = board[selected.r][selected.c];
             board[selected.r][selected.c] = "";
             selected = null; validMoves = [];
-            turn = 'b';
+            turn = (myColor === 'w' ? 'b' : 'w');
             resetTimer();
             makeAIMove();
-        } else if(board[r][c] && board[r][c][0] === 'w') {
+        } else if(board[r][c] && board[r][c][0] === myColor) {
             selected = {r, c};
             validMoves = getMoves(r, c);
         }

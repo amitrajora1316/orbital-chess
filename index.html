@@ -2,88 +2,106 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Orbital Arena | Vanguard Swift</title>
+    <title>Orbital Arena | Vanguard Evolved</title>
     <style>
-        :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
+        :root { --bg: #050507; --panel: #111114; --accent: #d4af37; --text: #e0e0e0; --danger: #ff4d4d; }
         body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
-        #sidebar { width: 320px; background: var(--panel); display: flex; flex-direction: column; padding: 20px; border-right: 2px solid #2d2d35; box-sizing: border-box; }
-        .header h1 { font-size: 1rem; letter-spacing: 4px; color: var(--accent); text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        #game-info { background: #25252b; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid var(--accent); margin-bottom: 15px; }
-        #timer-box { font-size: 2rem; font-weight: bold; color: var(--accent); }
-        .turn-label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
-        #rules-primer { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; font-size: 0.8rem; line-height: 1.4; color: #bbb; margin-bottom: 15px; border: 1px solid #333; }
-        #rules-primer h2 { font-size: 0.7rem; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-top: 0; margin-bottom: 8px; }
-        #rules-primer ul { padding-left: 15px; margin: 0; }
-        #gallery { flex-grow: 1; border-top: 1px solid #333; padding-top: 15px; overflow-y: auto; }
-        .gallery-label { font-size: 0.7rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
-        .captured-row { display: flex; flex-wrap: wrap; gap: 5px; min-height: 40px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; }
-        .captured-piece { font-size: 1.5rem; }
+        
+        #sidebar { width: 320px; background: var(--panel); display: flex; flex-direction: column; padding: 20px; border-right: 1px solid #2d2d35; box-sizing: border-box; }
+        .header h1 { font-size: 0.9rem; letter-spacing: 5px; color: var(--accent); text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        #game-info { background: #1a1a1f; padding: 15px; border-radius: 4px; text-align: center; border-left: 3px solid var(--accent); margin-bottom: 15px; }
+        #timer-box { font-size: 2.2rem; font-weight: 800; color: var(--accent); }
+        .turn-label { font-size: 0.7rem; color: #777; text-transform: uppercase; }
+
+        #rules-primer { background: rgba(212, 175, 55, 0.05); padding: 12px; border-radius: 4px; font-size: 0.75rem; color: #aaa; margin-bottom: 15px; border: 1px solid #2d2d35; }
+        #rules-primer h2 { font-size: 0.65rem; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin: 0 0 8px 0; }
+
+        #gallery { flex-grow: 1; border-top: 1px solid #2d2d35; padding-top: 15px; overflow-y: auto; }
+        .captured-row { display: flex; flex-wrap: wrap; gap: 4px; min-height: 30px; margin-bottom: 15px; }
+        .captured-piece { font-size: 1.4rem; }
+
         canvas { flex-grow: 1; cursor: crosshair; background: #000; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 4px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 100%; }
-        #overlay, #victory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .start-box { text-align:center; background:#1a1a1e; padding:50px; border-radius:15px; border:1px solid var(--accent); }
-        #check-alert { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); color: #ff4d4d; font-weight: bold; font-size: 1.5rem; letter-spacing: 5px; opacity: 0; transition: 0.5s; pointer-events: none; }
-        .show-check { opacity: 1 !important; transform: translateX(-50%) translateY(20px) !important; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 2px; font-weight: 800; cursor: pointer; width: 100%; text-transform: uppercase; }
+
+        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .start-box { text-align:center; background:#111114; padding:60px; border: 1px solid var(--accent); }
+        
+        #check-alert { position: absolute; top: 10%; left: 50%; translate: -50% 0; color: var(--danger); font-weight: 900; font-size: 3rem; letter-spacing: 15px; opacity: 0; pointer-events: none; transition: 0.3s; }
+        .show-check { opacity: 1 !important; }
     </style>
 </head>
 <body>
-    <div id="check-alert">CHECK!</div>
+    <div id="check-alert">CHECK</div>
+    
     <div id="overlay">
         <div class="start-box">
-            <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
-            <p style="color:#888;">YOU: 60s | AI: 2s | TOROIDAL</p>
-            <div style="display:flex; gap:15px; margin-top:20px;">
-                <button class="btn" onclick="startGame('w')">PLAY AS WHITE</button>
-                <button class="btn" style="background:#fff; color:#000;" onclick="startGame('b')">PLAY AS BLACK</button>
+            <h1 style="color:var(--accent); letter-spacing:8px; margin-bottom:10px;">VANGUARD : ORBITAL</h1>
+            <p style="color:#666; font-size:0.8rem; margin-bottom:30px;">SELECT YOUR DEPLOYMENT SIDE</p>
+            <div style="display:flex; gap:15px;">
+                <button class="btn" onclick="startGame('w')">Command White</button>
+                <button class="btn" style="background:#eee;" onclick="startGame('b')">Command Black</button>
             </div>
         </div>
     </div>
+
     <div id="victory-overlay" style="display:none;">
         <div class="start-box">
-            <h1 id="winner-text" style="color:var(--accent); letter-spacing:5px;">VICTORY</h1>
-            <p id="sub-winner-text" style="color:#888;">GAME OVER</p>
-            <button class="btn" onclick="location.reload()">REMATCH</button>
+            <h1 id="winner-text" style="color:var(--accent); letter-spacing:5px;">TERMINATED</h1>
+            <p id="sub-winner-text" style="color:#888; margin-bottom:20px;">FORFEIT</p>
+            <button class="btn" onclick="showChoiceMenu()">New Match / Swap Sides</button>
         </div>
     </div>
+
     <div id="sidebar">
-        <div class="header"><h1>VANGUARD AI</h1></div>
+        <div class="header"><h1>TACTICAL INTERFACE</h1></div>
         <div id="game-info">
-            <div id="player-tag" style="font-size: 0.9rem; color: var(--accent); margin-bottom: 5px;">YOU: WHITE</div>
-            <div class="turn-label" id="turn-text">OFFLINE</div>
+            <div class="turn-label" id="turn-text">WAITING...</div>
             <div id="timer-box">60s</div>
         </div>
         <div id="rules-primer">
-            <h2>Tactical Primer</h2>
+            <h2>Vanguard Protocol</h2>
             <ul>
-                <li><strong>Toroidal:</strong> Left-Right & Top-Bottom wrap.</li>
-                <li><strong>Inertia:</strong> Q, R, B, N move <b>forward only</b> on Turn 1.</li>
-                <li><strong>Blitz:</strong> AI has 2 seconds to act.</li>
-                <li><strong>Standard:</strong> Pawns promote to Queen at edges.</li>
+                <li><b>Toroidal:</b> Infinite wrap on all edges.</li>
+                <li><b>Inertia:</b> Majors must move <b>Forward</b> on Turn 1.</li>
+                <li><b>Blitz:</b> AI processes in &lt; 2 seconds.</li>
             </ul>
         </div>
         <div id="gallery">
-            <div class="gallery-label">Captured by AI</div>
             <div id="captured-by-ai" class="captured-row"></div>
-            <div class="gallery-label">Captured by You</div>
             <div id="captured-by-player" class="captured-row"></div>
         </div>
-        <button class="btn" onclick="location.reload()">RESTART</button>
+        <button class="btn" onclick="showChoiceMenu()" style="background:transparent; color:#555; border:1px solid #333;">Abort</button>
     </div>
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
     const ROWS = 12, COLS = 16, CELL = 60;
     let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60;
     let selected = null, validMoves = [], lastMove = null, gameActive = false;
-    const VALS = { 'P': 100, 'N': 250, 'B': 450, 'R': 550, 'Q': 1200, 'K': 20000 };
+
+    const VALS = { 'P': 120, 'N': 480, 'B': 420, 'R': 680, 'Q': 1250, 'K': 50000 };
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
+    function showChoiceMenu() {
+        gameActive = false;
+        clearInterval(timerInterval);
+        document.getElementById('victory-overlay').style.display = 'none';
+        document.getElementById('overlay').style.display = 'flex';
+        document.getElementById('captured-by-ai').innerHTML = '';
+        document.getElementById('captured-by-player').innerHTML = '';
+        lastMove = null;
+    }
+
     function startGame(side) {
-        myColor = side; gameActive = true;
+        myColor = side;
+        turn = 'w'; // White always starts
+        gameActive = true;
         document.getElementById('overlay').style.display = 'none';
-        document.getElementById('player-tag').innerText = "YOU: " + (side === 'w' ? "WHITE" : "BLACK");
         initBoard();
         resetTimer();
         if(turn !== myColor) aiMove();
@@ -100,169 +118,72 @@
         });
     }
 
-    function getMoves(r, c, b = board, moveHistory = hasMoved) {
-        const piece = b[r][c]; if(!piece) return [];
+    function getMoves(r, c, targetBoard = board, history = hasMoved) {
+        const piece = targetBoard[r][c]; if(!piece) return [];
         const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1;
-        const isFirstMove = !moveHistory[r][c];
+        const isFirst = !history[r][c];
 
         if(type==='P') {
             let nr = (r+fwd+ROWS)%ROWS; 
-            if(!b[nr][c]) moves.push({r:nr, c:c});
+            if(!targetBoard[nr][c]) moves.push({r:nr, c:c});
             [-1, 1].forEach(dc => {
                 let nc = (c+dc+COLS)%COLS;
-                if(b[nr][nc] && b[nr][nc][0] !== col) moves.push({r:nr, c:nc});
+                if(targetBoard[nr][nc] && targetBoard[nr][nc][0] !== col) moves.push({r:nr, c:nc});
             });
         } else {
             let dirs = (type==='N')?[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]:
-                         (type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:
-                         (type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:
-                                      [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-            if (isFirstMove && type !== 'K') {
-                dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
-            }
+                       (type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:
+                       (type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:
+                                    [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            if (isFirst && type !== 'K') dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
             const lim = (type==='K' || type==='N') ? 2 : 16;
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
                     let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
-                    if(b[nr][nc] && b[nr][nc][0] === col) break;
-                    moves.push({r:nr, c:nc}); if(b[nr][nc]) break;
+                    if(targetBoard[nr][nc] && targetBoard[nr][nc][0] === col) break;
+                    moves.push({r:nr, c:nc}); if(targetBoard[nr][nc]) break;
                 }
             });
         }
         return moves;
     }
 
-    function isCheck(color) {
-        let kingPos = null;
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === color + 'K') kingPos = {r,c};
-        if(!kingPos) return false;
-        const enemy = color === 'w' ? 'b' : 'w';
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-            if(board[r][c] && board[r][c][0] === enemy) {
-                if(getMoves(r, c).some(m => m.r === kingPos.r && m.c === kingPos.c)) return true;
-            }
-        }
-        return false;
-    }
-
-    /* REPLACE THE aiMove FUNCTION IN YOUR CODE WITH THIS ENHANCED VERSION */
-
-function aiMove() {
-    if (!gameActive) return;
-    document.getElementById('turn-text').innerText = "VANGUARD ANALYZING...";
-
-    setTimeout(() => {
+    function aiMove() {
+        if (!gameActive) return;
         const aiColor = (myColor === 'w' ? 'b' : 'w');
         const opponent = myColor;
-        let bestMove = null;
-        let bestScore = -Infinity;
+        setTimeout(() => {
+            let bestMove = null, bestScore = -Infinity, moves = [];
+            let kPos = null;
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === opponent + 'K') kPos = {r,c};
 
-        // 1. Generate all legal moves
-        let moves = [];
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                if (board[r][c] && board[r][c][0] === aiColor) {
-                    getMoves(r, c).forEach(m => {
-                        moves.push({ fr: r, fc: c, tr: m.r, tc: m.c, piece: board[r][c] });
-                    });
-                }
-            }
-        }
-
-        // 2. Evaluate Moves with "Mini-Minimax" (1.5 Ply Depth)
-        moves.forEach(move => {
-            let score = 0;
-            const targetPiece = board[move.tr][move.tc];
-            const movingPiece = board[move.fr][move.fc];
-
-            // A. Capture Value
-            if (targetPiece) {
-                score += VALS[targetPiece[1]] * 10;
-            }
-
-            // B. Positional Bonus (Center Control & Advancement)
-            // Pieces are encouraged to move toward the center rows (5, 6)
-            const distToCenter = Math.abs(move.tr - 5.5);
-            score += (3 - distToCenter) * 10;
-
-            // C. Vanguard Unlocking (Bonus for moving a major piece for the first time)
-            if (!hasMoved[move.fr][move.fc] && movingPiece[1] !== 'P') {
-                score += 50; 
-            }
-
-            // D. Safety Check (Simulate one response)
-            const originalSource = board[move.fr][move.fc];
-            const originalTarget = board[move.tr][move.tc];
-            
-            // Apply move
-            board[move.tr][move.tc] = originalSource;
-            board[move.fr][move.fc] = "";
-
-            let maxThreat = 0;
-            // Scan for immediate retaliation
-            for (let r = 0; r < ROWS; r++) {
-                for (let c = 0; c < COLS; c++) {
-                    if (board[r][c] && board[r][c][0] === opponent) {
-                        const replies = getMoves(r, c);
-                        replies.forEach(rm => {
-                            if (board[rm.r][rm.c] && board[rm.r][rm.c][0] === aiColor) {
-                                maxThreat = Math.max(maxThreat, VALS[board[rm.r][rm.c][1]]);
-                            }
-                        });
-                    }
-                }
-            }
-            score -= (maxThreat * 1.2); // Heavily penalize moves that leave pieces hanging
-
-            // Undo move
-            board[move.fr][move.fc] = originalSource;
-            board[move.tr][move.tc] = originalTarget;
-
-            // E. Random Variance (Prevent repetitive play)
-            score += Math.random() * 15;
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
-            }
-        });
-
-        if (bestMove && gameActive) {
-            executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
-        } else if (moves.length > 0 && gameActive) {
-            const fallback = moves[Math.floor(Math.random() * moves.length)];
-            executeMove(fallback.fr, fallback.fc, fallback.tr, fallback.tc);
-        } else if (gameActive) {
-            endGame(myColor, "VANGUARD ADMITS DEFEAT");
-        }
-    }, 250); // Faster reaction for blitz feel
-}
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+                if(board[r][c] && board[r][c][0] === aiColor) 
+                    getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c, p:board[r][c]}));
 
             moves.forEach(move => {
-                let target = board[move.tr][move.tc], source = board[move.fr][move.fc];
-                board[move.tr][move.tc] = source; board[move.fr][move.fc] = "";
-                let danger = 0;
-                if(move.score < 10000) {
-                    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-                        if(board[r][c] && board[r][c][0] === myColor) {
-                            getMoves(r, c).forEach(re => { if(board[re.r][re.c]) danger = Math.max(danger, VALS[board[re.r][re.c][1]]); });
-                        }
-                    }
+                let score = Math.random() * 10;
+                const target = board[move.tr][move.tc];
+                if(target) score += VALS[target[1]] * 15;
+                if(!hasMoved[move.fr][move.fc] && move.p[1] !== 'P') score += 250;
+                if(kPos) {
+                    const rD = Math.min(Math.abs(move.tr - kPos.r), ROWS - Math.abs(move.tr - kPos.r));
+                    const cD = Math.min(Math.abs(move.tc - kPos.c), COLS - Math.abs(move.tc - kPos.c));
+                    score += (20 - (rD + cD)) * 8;
                 }
-                let total = move.score - (danger * 1.1) + (Math.random()*5);
-                if(total > bestScore) { bestScore = total; bestMove = move; }
-                board[move.fr][move.fc] = source; board[move.tr][move.tc] = target;
+                const backupS = board[move.fr][move.fc], backupT = board[move.tr][move.tc];
+                board[move.tr][move.tc] = backupS; board[move.fr][move.fc] = "";
+                let danger = 0;
+                for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++)
+                    if(board[r][c] && board[r][c][0] === opponent)
+                        getMoves(r, c).forEach(oppM => { if(board[oppM.r][oppM.c] && board[oppM.r][oppM.c][0] === aiColor) danger = Math.max(danger, VALS[board[oppM.r][oppM.c][1]]); });
+                score -= (danger * 1.8);
+                board[move.fr][move.fc] = backupS; board[move.tr][move.tc] = backupT;
+                if(score > bestScore) { bestScore = score; bestMove = move; }
             });
 
-            if(bestMove && gameActive) {
-                executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
-            } else if (moves.length > 0 && gameActive) {
-                const fallback = moves[Math.floor(Math.random() * moves.length)];
-                executeMove(fallback.fr, fallback.fc, fallback.tr, fallback.tc);
-            } else if (gameActive) {
-                endGame(myColor, "AI IS COMPLETELY BLOCKED");
-            }
-        }, 400); // Artificial thinking delay
+            if(bestMove && gameActive) executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
+        }, 400);
     }
 
     function executeMove(fr, fc, tr, tc) {
@@ -271,74 +192,59 @@ function aiMove() {
         const victim = board[tr][tc];
         if(victim) {
             updateGallery(victim);
-            if(victim[1] === 'K') endGame(piece[0] === myColor ? "PLAYER" : "AI", "THE KING HAS FALLEN");
+            if(victim[1] === 'K') return endGame(piece[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
         }
         if(piece[1] === 'P' && (tr === 0 || tr === ROWS - 1)) piece = piece[0] + 'Q';
         board[tr][tc] = piece; board[fr][fc] = "";
-        hasMoved[tr][tc] = true; hasMoved[fr][fc] = false; 
+        hasMoved[tr][tc] = true;
         lastMove = {fr, fc, tr, tc};
         turn = (turn === 'w' ? 'b' : 'w');
-        if(gameActive) {
-            resetTimer();
-            if(isCheck(turn)) {
-                document.getElementById('check-alert').classList.add('show-check');
-                setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1500);
-            }
-            if(turn !== myColor) aiMove();
-        }
+        resetTimer();
+        if(gameActive && turn !== myColor) aiMove();
     }
 
     function updateGallery(piece) {
-        const containerId = piece[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
+        const id = piece[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
         const span = document.createElement('span');
         span.className = 'captured-piece'; span.innerText = PIECES[piece];
         span.style.color = piece[0] === 'w' ? '#fff' : '#d4af37';
-        document.getElementById(containerId).appendChild(span);
+        document.getElementById(id).appendChild(span);
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        timeLeft = (turn === myColor) ? 60 : 2;
+        document.getElementById('timer-box').innerText = timeLeft + "s";
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "COMMANDER TURN" : "AI PROCESSING";
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s";
+            if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TIME ELAPSED");
+        }, 1000);
     }
 
     function endGame(winner, reason) {
-        gameActive = false; 
-        clearInterval(timerInterval);
+        gameActive = false; clearInterval(timerInterval);
         document.getElementById('victory-overlay').style.display = 'flex';
         document.getElementById('winner-text').innerText = winner === "PLAYER" ? "ARENA CONQUERED" : "VANGUARD VICTORIOUS";
         document.getElementById('sub-winner-text').innerText = reason;
     }
 
-    function resetTimer() {
-        clearInterval(timerInterval);
-        // AI now only gets 2 seconds; Player gets 60 seconds
-        timeLeft = (turn === myColor) ? 60 : 2;
-        
-        document.getElementById('timer-box').innerText = timeLeft + "s";
-        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR TURN" : "AI BLITZ...";
-        
-        timerInterval = setInterval(() => {
-            timeLeft--;
-            document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s";
-            if(timeLeft <= 0) {
-                const loser = turn === myColor ? "AI" : "PLAYER";
-                const msg = turn === myColor ? "YOU RAN OUT OF TIME" : "AI FAILED TO RESPOND";
-                endGame(loser, msg);
-            }
-        }, 1000);
-    }
-
     function render() {
+        if(!gameActive && board.length === 0) return;
         canvas.width = window.innerWidth - 320; canvas.height = window.innerHeight;
         const ox = (canvas.width - COLS*CELL)/2, oy = (canvas.height - ROWS*CELL)/2;
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
             let dr = myColor==='b' ? ROWS-1-r : r, dc = myColor==='b' ? COLS-1-c : c;
             const x = dc*CELL+ox, y = dr*CELL+oy;
-            ctx.fillStyle = (r+c)%2===0 ? "#2a2a2e" : "#1a1a1e"; ctx.fillRect(x,y,CELL,CELL);
-            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) {
-                ctx.strokeStyle = "rgba(212,175,55,0.6)"; ctx.lineWidth = 3; ctx.strokeRect(x+2, y+2, CELL-4, CELL-4);
-            }
-            if(selected && selected.r === r && selected.c === c) { ctx.fillStyle = "rgba(212,175,55,0.3)"; ctx.fillRect(x,y,CELL,CELL); }
-            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,5,0,7); ctx.fill(); }});
+            ctx.fillStyle = (r+c)%2===0 ? "#0a0a0c" : "#121216"; ctx.fillRect(x,y,CELL,CELL);
+            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) { ctx.fillStyle = "rgba(212,175,55,0.1)"; ctx.fillRect(x,y,CELL,CELL); }
+            if(selected && selected.r === r && selected.c === c) { ctx.fillStyle = "rgba(212,175,55,0.2)"; ctx.fillRect(x,y,CELL,CELL); }
+            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 4, 0, 7); ctx.fill(); }});
             if(board[r][c]) {
                 ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#d4af37";
-                ctx.font = "30px Arial"; ctx.textAlign = "center"; ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+10);
+                ctx.font = "32px serif"; ctx.textAlign = "center"; ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+11);
             }
         }
         requestAnimationFrame(render);
@@ -350,7 +256,6 @@ function aiMove() {
         let c = Math.floor((e.clientX - rect.left - (canvas.width - COLS*CELL)/2) / CELL);
         let r = Math.floor((e.clientY - rect.top - (canvas.height - ROWS*CELL)/2) / CELL);
         if(myColor === 'b') { r = ROWS-1-r; c = COLS-1-c; }
-        if(r<0 || r>=ROWS || c<0 || c>=COLS) return;
         const move = validMoves.find(m => m.r === r && m.c === c);
         if(move) { executeMove(selected.r, selected.c, r, c); selected = null; validMoves = []; }
         else if(board[r][c] && board[r][c][0] === myColor) { selected = {r, c}; validMoves = getMoves(r, c); }
@@ -358,4 +263,3 @@ function aiMove() {
 </script>
 </body>
 </html>
-

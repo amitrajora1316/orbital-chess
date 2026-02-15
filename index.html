@@ -1,12 +1,14 @@
 // --- 1. FIREBASE CONFIG ---
     const firebaseConfig = {
-        apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
-        authDomain: "orbitalarena.firebaseapp.com",
-        databaseURL: "https://orbitalarena-default-rtdb.firebaseio.com", 
-        projectId: "orbitalarena",
-        storageBucket: "orbitalarena.firebasestorage.app",
-        messagingSenderId: "265516321261",
-        appId: "1:265516321261:web:a964edf2ba882ceff27fe4"
+      apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
+  authDomain: "orbitalarena.firebaseapp.com",
+  // Use the regional URL found in your Firebase Console
+  databaseURL: "https://orbitalarena-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "orbitalarena",
+  storageBucket: "orbitalarena.firebasestorage.app",
+  messagingSenderId: "265516321261",
+  appId: "1:265516321261:web:a964edf2ba882ceff27fe4",
+  measurementId: "G-X1Y7394GZQ"
     };
     
     firebase.initializeApp(firebaseConfig);
@@ -126,3 +128,4 @@
         }
         requestAnimationFrame(render);
     }
+

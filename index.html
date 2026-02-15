@@ -4,16 +4,21 @@
     <meta charset="UTF-8">
     <title>Orbital Arena | Vanguard V3</title>
     <style>
-        :root { 
-            --bg: #020204; 
-            --panel: #0a0a0f; 
-            --accent: #d4af37; 
-            --text: #ffffff; 
-            --tile-light: #161620; 
-            --tile-dark: #0d0d14;
-            --border: #2a2a35;
-        }
-        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', Roboto, sans-serif; height: 100vh; overflow: hidden; }
+       :root { 
+    --bg: #050508; 
+    --panel: #0d0d12; 
+    --accent: #c5a059; /* Muted Gold */
+    --text: #e0e0e0; 
+    /* High Visibility Tiles */
+    --tile-light: #dcd9d0; /* Polished Bone/Marble */
+    --tile-dark: #1a1a1c;  /* Deep Charcoal */
+    --border: #33333c;
+}
+
+/* Add a subtle inner glow to the board container */
+#canvas-container { 
+    background: radial-gradient(circle, #2a2a35 0%, #050508 100%); 
+}
         
         /* Sidebar Polish */
         #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 1px solid var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
@@ -283,3 +288,4 @@
 </script>
 </body>
 </html>
+

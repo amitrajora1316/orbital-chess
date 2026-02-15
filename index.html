@@ -104,33 +104,74 @@
     }
 
     // FAST AI: Uses a simple capture-priority heuristic
-    function makeAIMove() {
+    function aiMove() {
+    document.getElementById('turn-display').innerText = "AI THINKING...";
+    
+    setTimeout(() => {
         const aiColor = (myColor === 'w' ? 'b' : 'w');
-        setTimeout(() => {
-            let moves = [];
+        let bestMove = null;
+        let bestScore = -Infinity;
+
+        // 1. Get all possible moves for AI
+        let moves = [];
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(board[r][c] && board[r][c][0] === aiColor) {
+                    getMoves(r, c).forEach(m => {
+                        // Calculate immediate gain (Capture value)
+                        let immediateGain = board[m.r][m.c] ? VALS[board[m.r][m.c][1]] : 0;
+                        moves.push({fr:r, fc:c, tr:m.r, tc:m.c, score: immediateGain});
+                    });
+                }
+            }
+        }
+
+        // 2. TACTICAL DEPTH: Check for traps
+        moves.forEach(move => {
+            // Simulate the move
+            let originalTarget = board[move.tr][move.tc];
+            let originalSource = board[move.fr][move.fc];
+            board[move.tr][move.tc] = originalSource;
+            board[move.fr][move.fc] = "";
+
+            // Calculate "Danger Score" (What can the player take from me now?)
+            let maxDanger = 0;
             for(let r=0; r<ROWS; r++) {
                 for(let c=0; c<COLS; c++) {
-                    if(board[r][c] && board[r][c][0] === aiColor) {
-                        getMoves(r,c).forEach(m => {
-                            let score = 0;
-                            if(board[m.r][m.c]) score = VALS[board[m.r][m.c][1]];
-                            moves.push({fr:r, fc:c, tr:m.r, tc:m.c, score: score});
+                    if(board[r][c] && board[r][c][0] === myColor) {
+                        getMoves(r, c).forEach(reply => {
+                            if(board[reply.r][reply.c]) {
+                                let dangerValue = VALS[board[reply.r][reply.c][1]];
+                                if(dangerValue > maxDanger) maxDanger = dangerValue;
+                            }
                         });
                     }
                 }
             }
-            // Sort by capture value + small randomness
-            moves.sort((a, b) => (b.score + Math.random()) - (a.score + Math.random()));
-            if(moves.length) {
-                const m = moves[0];
-                board[m.tr][m.tc] = board[m.fr][m.fc];
-                board[m.fr][m.fc] = "";
-                turn = myColor;
-                resetTimer();
-            }
-        }, 300); // 300ms delay for "thinking" feel, logic is instant
-    }
 
+            // Move Score = What I gain - What I might lose
+            // We weigh the loss slightly higher to make the AI cautious
+            let totalScore = move.score - (maxDanger * 1.1);
+            
+            if(totalScore > bestScore) {
+                bestScore = totalScore;
+                bestMove = move;
+            }
+
+            // UNDO move to restore board
+            board[move.fr][move.fc] = originalSource;
+            board[move.tr][move.tc] = originalTarget;
+        });
+
+        // 3. Execute the smartest move
+        if(bestMove) {
+            board[bestMove.tr][bestMove.tc] = board[bestMove.fr][bestMove.fc];
+            board[bestMove.fr][bestMove.fc] = "";
+            turn = myColor;
+            document.getElementById('turn-display').innerText = "YOUR TURN";
+        }
+    }, 250); 
+}
     function resetTimer() {
         clearInterval(timerInterval);
         timeLeft = 60;
@@ -205,3 +246,4 @@
 </script>
 </body>
 </html>
+

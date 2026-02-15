@@ -1,101 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Orbital Chess | Arena Pro</title>
-    <style>
-        :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
-        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
-        
-        #sidebar { 
-            width: 320px; background: var(--panel); display: flex; flex-direction: column; 
-            padding: 15px; border-right: 2px solid #2d2d35; box-shadow: 5px 0 25px rgba(0,0,0,0.5); 
-        }
-        .header h1 { font-size: 0.9rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 10px; }
-        
-        .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
-        .tab-btn { flex: 1; padding: 8px; font-size: 0.7rem; background: #25252b; border: 1px solid #333; color: #888; cursor: pointer; border-radius: 4px; }
-        .tab-btn.active { border-color: var(--accent); color: var(--accent); }
-
-        #tab-content { flex-grow: 1; overflow-y: auto; font-size: 0.8rem; color: #ccc; }
-        .hidden { display: none; }
-
-        #players-container { height: 120px; overflow-y: auto; background: #111; border-radius: 8px; padding: 10px; border: 1px solid #333; margin-bottom: 15px; }
-        .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 5px;}
-        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; margin-right: 5px; }
-
-        #chat-box { height: 200px; display: flex; flex-direction: column; background: #000; border-radius: 8px; border: 1px solid #333; overflow: hidden; margin-top: 10px;}
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; font-size: 0.75rem; }
-        #chat-input { background: #111; border: none; color: white; padding: 10px; border-top: 1px solid #333; outline: none; font-size: 0.75rem; }
-
-        #game-info { background: #25252b; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 10px; display: none; border-left: 4px solid var(--accent); }
-
-        canvas { flex-grow: 1; cursor: grab; background: #000; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 5px 10px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; }
-        
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-    </style>
-</head>
-<body>
-
-    <div id="login-overlay">
-        <div style="text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent);">
-            <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
-            <input type="text" id="username-input" placeholder="Enter Nickname" style="padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white;"><br><br>
-            <button class="btn" style="padding:12px 40px; font-size:1rem;" onclick="joinArena()">ENTER LOBBY</button>
-        </div>
-    </div>
-
-    <div id="sidebar">
-        <div class="header"><h1>VANGUARD PRO</h1></div>
-        
-        <div class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('lobby')">LOBBY</button>
-            <button class="tab-btn" onclick="switchTab('rules')">RULES</button>
-            <button class="tab-btn" onclick="switchTab('about')">ABOUT</button>
-        </div>
-
-        <div id="tab-content">
-            <div id="tab-lobby">
-                <div id="game-info">
-                    <div id="opp-name" style="font-size: 0.7rem; opacity: 0.6;">VS ---</div>
-                    <div id="turn-display" style="font-weight: bold; margin-top: 5px;">YOUR TURN</div>
-                </div>
-                <div id="players-container">Searching for players...</div>
-                <div id="chat-box">
-                    <div id="chat-messages"></div>
-                    <input type="text" id="chat-input" placeholder="Chat here...">
-                </div>
-            </div>
-
-            <div id="tab-rules" class="hidden">
-                <p><b>Orbital Rules:</b></p>
-                <ul>
-                    <li>12x16 Toroidal Board (Edges wrap).</li>
-                    <li>Pawns move "forward" (White up, Black down).</li>
-                    <li>Capture the King to win.</li>
-                </ul>
-            </div>
-
-            <div id="tab-about" class="hidden">
-                <p>Built for the Orbital Arena Championship.</p>
-            </div>
-        </div>
-        
-        <button class="btn" style="margin-top:15px; background:none; border:1px solid #444; color:#666;" onclick="location.reload()">RELOAD</button>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
-
-<script>
-    // --- 1. FIREBASE CONFIG ---
+// --- 1. FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
         authDomain: "orbitalarena.firebaseapp.com",
-        databaseURL: "https://orbitalarena-default-rtdb.firebaseio.com", // Ensure this URL is exact from your console
+        databaseURL: "https://orbitalarena-default-rtdb.firebaseio.com", 
         projectId: "orbitalarena",
         storageBucket: "orbitalarena.firebasestorage.app",
         messagingSenderId: "265516321261",
@@ -115,70 +22,55 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // --- 3. TABS ---
-    function switchTab(tab) {
-        document.getElementById('tab-lobby').classList.add('hidden');
-        document.getElementById('tab-rules').classList.add('hidden');
-        document.getElementById('tab-about').classList.add('hidden');
-        document.getElementById('tab-' + tab).classList.remove('hidden');
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
-    }
+    // Initialize board as empty so it renders even without a game
+    board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
 
-    // --- 4. MULTIPLAYER LOGIC ---
+    // --- 3. ARENA LOGIC ---
     function joinArena() {
         myName = document.getElementById('username-input').value || "User" + Math.floor(Math.random()*99);
         myId = "id_" + Math.random().toString(36).substr(2, 5);
         document.getElementById('login-overlay').style.display = 'none';
 
-        db.ref('players/' + myId).set({ name: myName, status: 'available' });
-        db.ref('players/' + myId).onDisconnect().remove();
+        // Register User
+        const myRef = db.ref('players/' + myId);
+        myRef.set({ name: myName, status: 'available' });
+        myRef.onDisconnect().remove();
 
-        // Sync Lobby
+        // LIVE LOBBY LISTENER
         db.ref('players').on('value', snap => {
             const container = document.getElementById('players-container');
             container.innerHTML = "";
+            let count = 0;
             snap.forEach(child => {
                 if(child.key === myId) return;
+                count++;
                 const p = child.val();
                 const div = document.createElement('div');
                 div.className = 'player-card';
-                div.innerHTML = `<span><span class="status-dot"></span>${p.name}</span> <button class="btn" onclick="challenge('${child.key}')">FIGHT</button>`;
+                div.innerHTML = `<span><span class="status-dot"></span>${p.name}</span> 
+                                 <button class="btn" onclick="challenge('${child.key}')">FIGHT</button>`;
                 container.appendChild(div);
             });
+            if(count === 0) container.innerHTML = "Waiting for others to join...";
         });
 
-        // Listen for challenges
+        // CHALLENGE LISTENER
         db.ref('challenges/' + myId).on('value', snap => {
             const c = snap.val();
             if(c) {
-                if(confirm(c.fromName + " challenged you!")) {
+                if(confirm(c.fromName + " has challenged you! Accept?")) {
                     db.ref('challenges/' + myId).remove();
                     initGame(c.gameId, 'b', c.fromName);
                 }
             }
         });
 
-        // Chat
-        document.getElementById('chat-input').addEventListener('keypress', e => {
-            if(e.key === 'Enter') {
-                db.ref('chat').push({name: myName, msg: e.target.value});
-                e.target.value = "";
-            }
-        });
-        db.ref('chat').limitToLast(10).on('child_added', snap => {
-            const d = snap.val();
-            const msg = document.createElement('div');
-            msg.innerHTML = `<b>${d.name}:</b> ${d.msg}`;
-            document.getElementById('chat-messages').appendChild(msg);
-        });
-
-        render(); // Start drawing
+        requestAnimationFrame(render); // Start drawing loop immediately
     }
 
-    function challenge(tid) {
+    function challenge(targetId) {
         const gid = "g_" + Date.now();
-        db.ref('challenges/' + tid).set({fromName: myName, gameId: gid});
+        db.ref('challenges/' + targetId).set({fromName: myName, gameId: gid});
         initGame(gid, 'w', "Opponent");
     }
 
@@ -202,89 +94,35 @@
         });
     }
 
-    function updateUI() {
-        const d = document.getElementById('turn-display');
-        d.innerText = (turn === myColor) ? "YOUR TURN" : "WAITING...";
-        d.style.color = (turn === myColor) ? var(--accent) : "#666";
-    }
-
-    // --- 5. MOVE ENGINE ---
-    function getMoves(r, c) {
-        const p = board[r][c]; if(!p) return [];
-        const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
-        if(type==='P') {
-            let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c});
-            [-1, 1].forEach(dc => {
-                let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0]!==col) moves.push({r:nr, c:nc});
-            });
-        } else {
-            const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
-                         (type==='R') ? [[0,1],[0,-1],[1,0],[-1,0]] :
-                         (type==='B') ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
-                         [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-            const lim = (type==='K' || type==='N') ? 2 : 16;
-            dirs.forEach(([dr, dc]) => {
-                for(let i=1; i<lim; i++) {
-                    let nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
-                    if(board[nr][nc] && board[nr][nc][0]===col) break;
-                    moves.push({r:nr, c:nc}); if(board[nr][nc]) break;
-                }
-            });
-        }
-        return moves;
-    }
-
-    // --- 6. RENDER ---
+    // --- 4. RENDER LOOP (ORBITAL GRID) ---
     function render() {
         canvas.width = window.innerWidth - 320;
         canvas.height = window.innerHeight;
         ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        if(board.length === 0) {
-            ctx.fillStyle = "#333"; ctx.textAlign = "center";
-            ctx.fillText("Waiting for game to start...", canvas.width/2, canvas.height/2);
-        } else {
-            for(let r=-1; r<=ROWS; r++) {
-                for(let c=-1; c<=COLS; c++) {
-                    const rr=(r%ROWS+ROWS)%ROWS, rc=(c%COLS+COLS)%COLS;
-                    const x = c*CELL + camX, y = r*CELL + camY;
-                    ctx.fillStyle = (rr+rc)%2===0 ? "#e8d5b5" : "#8b6b4d";
-                    ctx.fillRect(x,y,CELL,CELL);
-                    
-                    if(selected && selected.r === rr && selected.c === rc) {
-                        ctx.fillStyle = "rgba(212,175,55,0.4)"; ctx.fillRect(x,y,CELL,CELL);
-                    }
-                    if(board[rr][rc]) {
-                        ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
-                        ctx.font = "40px Arial"; ctx.textAlign = "center";
-                        ctx.fillText(PIECES[board[rr][rc]], x+CELL/2, y+CELL/2+14);
-                    }
+        // Draw an infinite-feeling grid using Toroidal Wrap
+        for(let r=-2; r<=ROWS+1; r++) {
+            for(let c=-2; c<=COLS+2; c++) {
+                const rr = (r % ROWS + ROWS) % ROWS;
+                const rc = (c % COLS + COLS) % COLS;
+                const x = c * CELL + camX, y = r * CELL + camY;
+                
+                // Checkerboard colors
+                ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x, y, CELL, CELL);
+                
+                // Highlight Selected
+                if(selected && selected.r === rr && selected.c === rc) {
+                    ctx.fillStyle = "rgba(212,175,55,0.5)"; ctx.fillRect(x, y, CELL, CELL);
+                }
+
+                // Draw Piece
+                if(board[rr] && board[rr][rc]) {
+                    ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
+                    ctx.font = "40px Arial"; ctx.textAlign = "center";
+                    ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 14);
                 }
             }
         }
         requestAnimationFrame(render);
     }
-
-    canvas.addEventListener('mousedown', e => {
-        if(turn !== myColor) return;
-        const mx = e.offsetX - camX, my = e.offsetY - camY;
-        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
-        const rr = (r%ROWS+ROWS)%ROWS, rc = (c%COLS+COLS)%COLS;
-
-        if(e.button === 0) {
-            const mv = validMoves.find(m => m.r === rr && m.c === rc);
-            if(mv) {
-                board[rr][rc] = board[selected.r][selected.c]; board[selected.r][selected.c] = "";
-                db.ref('games/'+currentGameId).update({board, turn: turn==='w'?'b':'w'});
-                selected = null; validMoves = [];
-            } else if(board[rr][rc] && board[rr][rc][0] === turn) {
-                selected = {r: rr, c: rc}; validMoves = getMoves(rr, rc);
-            }
-        } else { isPanning = true; lastMouse = {x:e.clientX, y:e.clientY}; }
-    });
-
-    window.onmousemove = e => { if(isPanning) { camX += e.clientX - lastMouse.x; camY += e.clientY - lastMouse.y; lastMouse={x:e.clientX, y:e.clientY}; } };
-    window.onmouseup = () => isPanning = false;
-</script>
-</body>
-</html>

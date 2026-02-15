@@ -4,157 +4,30 @@
     <meta charset="UTF-8">
     <title>Orbital Chess | Vanguard</title>
     <style>
-        :root {
-            --bg: #0d0d0f;
-            --panel: #1a1a1e;
-            --accent: #d4af37;
-            --white-sq: #e8d5b5;
-            --black-sq: #8b6b4d;
-            --text: #ffffff;
-            --font: 'Segoe UI', system-ui, sans-serif;
-        }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            margin: 0;
-            display: flex;
-            font-family: var(--font);
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        /* --- SIDEBAR UI --- */
-        #sidebar {
-            width: 240px;
-            background: var(--panel);
-            display: flex;
-            flex-direction: column;
-            padding: 30px 20px;
-            border-right: 2px solid #2d2d35;
-            box-shadow: 5px 0 25px rgba(0,0,0,0.6);
-            z-index: 10;
-        }
-
-        .header { text-align: center; margin-bottom: 40px; }
-        .header h1 { font-size: 1.2rem; letter-spacing: 2px; color: var(--accent); margin: 0; }
-
-        .status-box {
-            background: #25252b;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            border: 1px solid #333;
-            margin-bottom: 40px;
-        }
-
-        #turn-txt { font-weight: 700; font-size: 1.1rem; }
-
-        .eval-section {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-
-        #eval-bar {
-            width: 40px;
-            height: 80%;
-            background: #111;
-            border-radius: 20px;
-            position: relative;
-            overflow: hidden;
-            border: 2px solid #444;
-        }
-
-        #eval-fill {
-            width: 100%;
-            background: linear-gradient(180deg, #fff 0%, #bbb 100%);
-            position: absolute;
-            bottom: 0;
-            height: 50%;
-            transition: height 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        /* --- MENU OVERLAY (BUG FIXED) --- */
-        #menu-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000; /* Ensure it stays on top until started */
-        }
-
-        .menu-card {
-            background: #1a1a1e;
-            padding: 50px;
-            border-radius: 20px;
-            border: 2px solid var(--accent);
-            text-align: center;
-            box-shadow: 0 0 60px rgba(212, 175, 55, 0.15);
-        }
-
-        .menu-btn {
-            display: block;
-            width: 220px;
-            padding: 18px;
-            margin: 15px auto;
-            background: transparent;
-            color: white;
-            border: 1px solid #444;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            font-weight: 600;
-            transition: 0.2s;
-        }
-
-        .menu-btn:hover {
-            border-color: var(--accent);
-            background: rgba(212, 175, 55, 0.1);
-            transform: translateY(-2px);
-        }
-
-        canvas { flex-grow: 1; cursor: grab; background: #000; }
-        .reset-btn {
-            background: transparent;
-            color: var(--accent);
-            border: 1px solid var(--accent);
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
+        :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
+        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        #sidebar { width: 240px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 2px solid #2d2d35; box-shadow: 5px 0 20px rgba(0,0,0,0.5); }
+        .header h1 { font-size: 1.1rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 30px; }
+        .status-box { background: #25252b; padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 1px solid #333; }
+        .eval-bar { width: 35px; height: 100%; background: #111; margin: 10px auto; border-radius: 18px; position: relative; overflow: hidden; border: 2px solid #444; }
+        #eval-fill { width: 100%; background: linear-gradient(to bottom, #fff, #ccc); position: absolute; bottom: 0; height: 50%; transition: height 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #thinking { color: var(--accent); font-size: 0.75rem; text-align: center; visibility: hidden; font-weight: 800; margin-bottom: 10px; }
+        canvas { flex-grow: 1; cursor: grab; background: radial-gradient(circle, #1a1a1e 0%, #0d0d0f 100%); }
+        .btn { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 10px; border-radius: 5px; cursor: pointer; margin-top: auto; font-weight: 600; }
+        .btn:hover { background: var(--accent); color: #000; }
     </style>
 </head>
 <body>
 
-    <div id="menu-overlay">
-        <div class="menu-card">
-            <h1 style="color: var(--accent); margin-bottom: 30px; letter-spacing: 4px;">ORBITAL CHESS</h1>
-            <button class="menu-btn" onclick="startGame('AI', 1)">EASY AI</button>
-            <button class="menu-btn" onclick="startGame('AI', 2)">MEDIUM AI</button>
-            <button class="menu-btn" onclick="startGame('AI', 3)">HARD AI</button>
-            <button class="menu-btn" onclick="startGame('PVP', 0)">PLAYER vs PLAYER</button>
-        </div>
-    </div>
-
     <div id="sidebar">
         <div class="header"><h1>VANGUARD</h1></div>
-        <div class="status-box">
-            <div id="turn-txt">WHITE'S TURN</div>
+        <div class="status-box"><div id="turn-txt">WHITE'S TURN</div></div>
+        <div id="thinking">ENGINE CALCULATING...</div>
+        <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center;">
+            <span style="font-size: 0.65rem; opacity: 0.5; margin-bottom: 5px;">PROBABILITY</span>
+            <div class="eval-bar"><div id="eval-fill"></div></div>
         </div>
-        <div class="eval-section">
-            <span style="font-size: 0.7rem; opacity: 0.6; font-weight: 800;">PROBABILITY</span>
-            <div id="eval-bar">
-                <div id="eval-fill"></div>
-            </div>
-        </div>
-        <button class="reset-btn" onclick="location.reload()">BACK TO MENU</button>
+        <button class="btn" onclick="location.reload()">RESTART MATCH</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -162,66 +35,45 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    const ROWS = 12, COLS = 16, CELL = 80;
+    const ROWS = 12, COLS = 16, CELL = 75;
+    let board = [], turn = 'w', selected = null, validMoves = [], isThinking = false;
+    let camX = 100, camY = -180, isPanning = false, lastMouse = {x:0, y:0};
 
-    let board = [], hasMoved = [], turn = 'w', selected = null, validMoves = [];
-    let camX = 100, camY = -150, isPanning = false, lastMouse = {x:0, y:0};
-    let gameMode = 'AI', aiDepth = 1, isThinking = false, gameStarted = false;
+    // --- POSITIONAL TABLES (Learned Values) ---
+    const PST = {
+        'P': [0, 0, 2, 5, 10, 12, 12, 10, 5, 2, 0, 0],
+        'N': [-10, -5, 0, 5, 10, 10, 10, 10, 5, 0, -5, -10],
+        'R': [0, 0, 0, 5, 5, 5, 5, 5, 5, 0, 0, 0],
+        'K': [30, 40, 20, 0, -10, -20, -20, -10, 0, 20, 40, 30]
+    };
 
-    // --- INITIALIZATION ---
-    function startGame(mode, depth) {
-        gameMode = mode;
-        aiDepth = depth;
-        document.getElementById('menu-overlay').style.display = 'none';
-        gameStarted = true;
-        resetBoard();
-        updateUI();
-    }
-
-    function resetBoard() {
+    function initBoard() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
-        hasMoved = Array(ROWS).fill().map(() => Array(COLS).fill(false));
         const layout = ["R", "N", "B", "Q", "K", "B", "N", "R"];
         layout.forEach((p, i) => {
             board[2][4+i] = "b"+p; board[3][4+i] = "bP";
             board[9][4+i] = "w"+p; board[8][4+i] = "wP";
         });
-        turn = 'w';
+        updateUI();
     }
 
-    const PIECES = {
-        'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
-        'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
-    };
-
-    // --- GAME LOGIC ---
     function getMoves(b, r, c) {
         const p = b[r][c]; if(!p) return [];
         const color = p[0], type = p[1], moves = [];
         const fwd = color === 'w' ? -1 : 1;
-
         if (type === 'P') {
             let nr = (r + fwd + ROWS) % ROWS;
-            if (!b[nr][c]) {
-                moves.push({r: nr, c});
-                if ((color === 'w' && r === 9) || (color === 'b' && r === 2)) {
-                    let nr2 = (r + 2 * fwd + ROWS) % ROWS;
-                    if (!b[nr2][c]) moves.push({r: nr2, c});
-                }
-            }
+            if (!b[nr][c]) moves.push({r: nr, c});
             [-1, 1].forEach(dc => {
                 let nc = (c + dc + COLS) % COLS;
                 if (b[nr][nc] && b[nr][nc][0] !== color) moves.push({r: nr, c: nc});
             });
-        } else if (type === 'N') {
-            [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dr, dc]) => {
-                moves.push({r: (r + dr + ROWS) % ROWS, c: (c + dc + COLS) % COLS});
-            });
         } else {
-            const dirs = type === 'R' ? [[0,1],[0,-1],[1,0],[-1,0]] :
-                         type === 'B' ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
+            const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
+                         (type==='R') ? [[0,1],[0,-1],[1,0],[-1,0]] :
+                         (type==='B') ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
                          [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-            const limit = type === 'K' ? 2 : 16;
+            const limit = (type==='K' || type==='N') ? 2 : 12;
             dirs.forEach(([dr, dc]) => {
                 for (let i = 1; i < limit; i++) {
                     let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
@@ -234,34 +86,37 @@
         return moves.filter(m => !b[m.r][m.c] || b[m.r][m.c][0] !== color);
     }
 
-    // --- AI ---
     function evaluate(b) {
-        const vals = {P:10, N:30, B:30, R:50, Q:90, K:1000};
+        const vals = {P:10, N:32, B:33, R:50, Q:90, K:10000};
         let score = 0;
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-            if(b[r][c]) score += vals[b[r][c][1]] * (b[r][c][0] === 'w' ? -1 : 1);
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(!b[r][c]) continue;
+                let p = b[r][c][1], side = b[r][c][0];
+                let val = vals[p] + (PST[p] ? PST[p][r] : 0);
+                score += (side === 'b' ? val : -val);
+            }
         }
         return score;
     }
 
     function minimax(b, depth, alpha, beta, maximizing) {
         if (depth === 0) return {score: evaluate(b)};
-        let color = maximizing ? 'b' : 'w';
-        let bestMove = null;
         let moves = [];
+        let color = maximizing ? 'b' : 'w';
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-            if(b[r][c].startsWith(color)) {
-                getMoves(b, r, c).forEach(m => moves.push({start:{r,c}, end:m}));
-            }
+            if(b[r][c].startsWith(color)) getMoves(b, r, c).forEach(m => moves.push({s:{r,c}, e:m}));
         }
-        
+        moves.sort((a, b) => (b.e.r === 9 || b.e.r === 2 ? 1 : -1)); // Simple move ordering
+
+        let bestMove = null;
         if (maximizing) {
             let maxEval = -Infinity;
             for (let m of moves) {
-                let temp = b[m.end.r][m.end.c];
-                b[m.end.r][m.end.c] = b[m.start.r][m.start.c]; b[m.start.r][m.start.c] = "";
-                let ev = minimax(b, depth-1, alpha, beta, false).score;
-                b[m.start.r][m.start.c] = b[m.end.r][m.end.c]; b[m.end.r][m.end.c] = temp;
+                let target = b[m.e.r][m.e.c];
+                b[m.e.r][m.e.c] = b[m.s.r][m.s.c]; b[m.s.r][m.s.c] = "";
+                let ev = minimax(b, depth - 1, alpha, beta, false).score;
+                b[m.s.r][m.s.c] = b[m.e.r][m.e.c]; b[m.e.r][m.e.c] = target;
                 if (ev > maxEval) { maxEval = ev; bestMove = m; }
                 alpha = Math.max(alpha, ev); if (beta <= alpha) break;
             }
@@ -269,10 +124,10 @@
         } else {
             let minEval = Infinity;
             for (let m of moves) {
-                let temp = b[m.end.r][m.end.c];
-                b[m.end.r][m.end.c] = b[m.start.r][m.start.c]; b[m.start.r][m.start.c] = "";
-                let ev = minimax(b, depth-1, alpha, beta, true).score;
-                b[m.start.r][m.start.c] = b[m.end.r][m.end.c]; b[m.end.r][m.end.c] = temp;
+                let target = b[m.e.r][m.e.c];
+                b[m.e.r][m.e.c] = b[m.s.r][m.s.c]; b[m.s.r][m.s.c] = "";
+                let ev = minimax(b, depth - 1, alpha, beta, true).score;
+                b[m.s.r][m.s.c] = b[m.e.r][m.e.c]; b[m.e.r][m.e.c] = target;
                 if (ev < minEval) { minEval = ev; bestMove = m; }
                 beta = Math.min(beta, ev); if (beta <= alpha) break;
             }
@@ -280,90 +135,64 @@
         }
     }
 
-    async function executeAiMove() {
+    async function runAI() {
         isThinking = true;
-        await new Promise(r => setTimeout(r, 600)); // Delay for realism
-        let res = minimax(board, aiDepth, -Infinity, Infinity, true);
-        if (res.move) {
-            board[res.move.end.r][res.move.end.c] = board[res.move.start.r][res.move.start.c];
-            board[res.move.start.r][res.move.start.c] = "";
-            turn = 'w';
-            updateUI();
-        }
-        isThinking = false;
+        document.getElementById('thinking').style.visibility = 'visible';
+        setTimeout(() => {
+            let res = minimax(board, 3, -Infinity, Infinity, true); // Depth 3 is the "Pretty Good" sweet spot
+            if (res.move) {
+                board[res.move.e.r][res.move.e.c] = board[res.move.s.r][res.move.s.c];
+                board[res.move.s.r][res.move.s.c] = "";
+                turn = 'w';
+                updateUI();
+            }
+            isThinking = false;
+            document.getElementById('thinking').style.visibility = 'hidden';
+        }, 100);
     }
 
     function updateUI() {
         document.getElementById('turn-txt').innerText = (turn === 'w' ? "WHITE" : "BLACK") + "'S TURN";
-        let score = evaluate(board);
-        document.getElementById('eval-fill').style.height = Math.max(5, Math.min(95, 50 - score/2)) + "%";
+        let s = evaluate(board);
+        document.getElementById('eval-fill').style.height = Math.max(5, Math.min(95, 50 - s/15)) + "%";
     }
 
-    // --- RENDER & CONTROLS ---
-    function render() {
+    const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
+    function draw() {
         canvas.width = window.innerWidth - 240; canvas.height = window.innerHeight;
-        if (!gameStarted) { requestAnimationFrame(render); return; }
-
-        for(let r = -1; r < ROWS + 1; r++) {
-            for(let c = -1; c < COLS + 1; c++) {
-                const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
-                const x = c * CELL + camX, y = r * CELL + camY;
-                ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
-                ctx.fillRect(x, y, CELL, CELL);
-
-                if (selected && selected.r === rr && selected.c === rc) {
-                    ctx.fillStyle = "rgba(212, 175, 55, 0.4)"; ctx.fillRect(x, y, CELL, CELL);
-                }
-
-                validMoves.forEach(m => {
-                    if (m.r === rr && m.c === rc) {
-                        ctx.fillStyle = "rgba(0,0,0,0.15)";
-                        ctx.beginPath(); ctx.arc(x + CELL/2, y + CELL/2, 8, 0, Math.PI*2); ctx.fill();
-                    }
-                });
-
-                if (board[rr][rc]) {
-                    ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
-                    ctx.font = "50px serif"; ctx.textAlign = "center";
-                    ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 15);
-                }
+        for(let r=-1; r<ROWS+1; r++) {
+            for(let c=-1; c<COLS+1; c++) {
+                let rr = (r%ROWS+ROWS)%ROWS, rc = (c%COLS+COLS)%COLS;
+                let x = c*CELL+camX, y = r*CELL+camY;
+                ctx.fillStyle = (rr+rc)%2===0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x,y,CELL,CELL);
+                if(selected && selected.r === rr && selected.c === rc) { ctx.fillStyle = "rgba(212,175,55,0.4)"; ctx.fillRect(x,y,CELL,CELL); }
+                validMoves.forEach(m => { if(m.r === rr && m.c === rc) { ctx.fillStyle="rgba(0,0,0,0.1)"; ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,6,0,Math.PI*2); ctx.fill(); } });
+                if(board[rr][rc]) { ctx.fillStyle = board[rr][rc][0]==='w'?'#fff':'#000'; ctx.font="45px serif"; ctx.textAlign="center"; ctx.fillText(PIECES[board[rr][rc]], x+CELL/2, y+CELL/2+15); }
             }
         }
-        requestAnimationFrame(render);
+        requestAnimationFrame(draw);
     }
 
     canvas.addEventListener('mousedown', e => {
-        if (!gameStarted || isThinking) return;
-        const mx = e.offsetX - camX, my = e.offsetY - camY;
-        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
-        const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
-
-        if (e.button === 0) {
-            const move = validMoves.find(m => m.r === rr && m.c === rc);
-            if (move) {
-                board[rr][rc] = board[selected.r][selected.c];
-                board[selected.r][selected.c] = "";
-                turn = turn === 'w' ? 'b' : 'w';
-                selected = null; validMoves = [];
-                updateUI();
-                if (gameMode === 'AI' && turn === 'b') executeAiMove();
-            } else if (board[rr][rc] && board[rr][rc][0] === turn) {
-                selected = {r: rr, c: rc};
-                validMoves = getMoves(board, rr, rc);
-            } else { selected = null; validMoves = []; }
-        } else { isPanning = true; lastMouse = {x: e.clientX, y: e.clientY}; }
+        if(isThinking) return;
+        let mx = e.offsetX-camX, my = e.offsetY-camY;
+        let c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
+        let rr = (r%ROWS+ROWS)%ROWS, rc = (c%COLS+COLS)%COLS;
+        if(e.button===0) {
+            let m = validMoves.find(mv => mv.r === rr && mv.c === rc);
+            if(m) {
+                board[rr][rc] = board[selected.r][selected.c]; board[selected.r][selected.c] = "";
+                turn = 'b'; selected = null; validMoves = []; updateUI(); runAI();
+            } else if(board[rr][rc] && board[rr][rc][0] === turn) {
+                selected = {r:rr, c:rc}; validMoves = getMoves(board, rr, rc);
+            }
+        } else { isPanning = true; lastMouse = {x:e.clientX, y:e.clientY}; }
     });
-
-    window.addEventListener('mousemove', e => {
-        if (isPanning) {
-            camX += e.clientX - lastMouse.x; camY += e.clientY - lastMouse.y;
-            lastMouse = {x: e.clientX, y: e.clientY};
-        }
-    });
+    window.addEventListener('mousemove', e => { if(isPanning) { camX += e.clientX-lastMouse.x; camY += e.clientY-lastMouse.y; lastMouse = {x:e.clientX, y:e.clientY}; } });
     window.addEventListener('mouseup', () => isPanning = false);
-    window.addEventListener('contextmenu', e => e.preventDefault());
-
-    render();
+    window.oncontextmenu = (e) => e.preventDefault();
+    initBoard(); draw();
 </script>
 </body>
 </html>

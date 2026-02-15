@@ -64,7 +64,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
-    // --- 1. FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
         authDomain: "orbitalarena.firebaseapp.com",
@@ -72,66 +71,54 @@
         projectId: "orbitalarena",
         storageBucket: "orbitalarena.firebasestorage.app",
         messagingSenderId: "265516321261",
-        appId: "1:265516321261:web:a964edf2ba882ceff27fe4",
-        measurementId: "G-X1Y7394GZQ"
+        appId: "1:265516321261:web:a964edf2ba882ceff27fe4"
     };
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- 2. GAME STATE ---
-    const ROWS = 12, COLS = 16, CELL = 70;
-    let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = null, isAI = false;
+    const ROWS = 12, COLS = 16, CELL = 60;
+    let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = 'w', isAI = false;
     let selected = null, validMoves = [], timerInterval, timeLeft = 60;
+    let offsetX = 0, offsetY = 0;
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
 
-    // --- 3. LOBBY & JOIN LOGIC ---
     function joinArena(mode) {
         const inputName = document.getElementById('username-input').value.trim();
         myId = "id_" + Math.random().toString(36).substr(2, 5);
-        myName = inputName || "Guest_" + myId.split('_')[1]; // Auto-Guest Name
-        
+        myName = inputName || "Guest_" + myId.split('_')[1];
         document.getElementById('login-overlay').style.display = 'none';
 
-        if(mode === 'ai') {
-            isAI = true;
-            startAIGame();
-        } else {
-            initMultiplayer();
-        }
+        if(mode === 'ai') { isAI = true; startAIGame(); } 
+        else { initMultiplayer(); }
+        
         requestAnimationFrame(render);
     }
 
     function initMultiplayer() {
-        db.ref('players/' + myId).set({ name: myName, status: 'available' });
+        db.ref('players/' + myId).set({ name: myName });
         db.ref('players/' + myId).onDisconnect().remove();
 
-        // Sync Lobby Players
         db.ref('players').on('value', snap => {
             const container = document.getElementById('players-container');
             container.innerHTML = "";
-            let count = 0;
             snap.forEach(child => {
                 if(child.key === myId) return;
-                count++;
-                const p = child.val();
                 const div = document.createElement('div');
                 div.className = 'player-card';
-                div.innerHTML = `<span>${p.name}</span> <button class="btn" onclick="challenge('${child.key}')">FIGHT</button>`;
+                div.innerHTML = `<span>${child.val().name}</span> <button class="btn" onclick="challenge('${child.key}')">FIGHT</button>`;
                 container.appendChild(div);
             });
-            if(count === 0) container.innerHTML = "<div style='color:#444; text-align:center;'>No other commanders online...</div>";
         });
 
-        // Listen for Challenges (Acceptor becomes Black)
         db.ref('challenges/' + myId).on('value', snap => {
             const c = snap.val();
             if(c) {
-                if(confirm(c.fromName + " challenges you! (Accepting makes you BLACK)")) {
+                if(confirm(c.fromName + " challenges you! (You will be BLACK)")) {
                     db.ref('challenges/' + myId).remove();
                     initGame(c.gameId, 'b', c.fromName);
                 }
@@ -141,7 +128,6 @@
 
     function challenge(targetId) {
         const gid = "g_" + Date.now();
-        // Challenger becomes White
         db.ref('challenges/' + targetId).set({fromName: myName, gameId: gid});
         initGame(gid, 'w', "Opponent");
     }
@@ -160,24 +146,16 @@
             db.ref('games/'+gid).set({board: newBoard, turn: 'w'});
         }
 
-        // Feature: Sync moves across boards
         db.ref('games/'+gid).on('value', snap => {
             const data = snap.val();
-            if(data) { 
-                board = data.board; 
-                turn = data.turn; 
-                resetTimer(); 
-            }
+            if(data) { board = data.board; turn = data.turn; resetTimer(); }
         });
     }
 
     function resetTimer() {
         clearInterval(timerInterval);
         timeLeft = 60;
-        const turnText = document.getElementById('turn-text');
-        turnText.innerText = (turn === myColor) ? "YOUR TURN" : "THEIR TURN";
-        turnText.style.color = (turn === myColor) ? "var(--accent)" : "#888";
-
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR TURN" : "THEIR TURN";
         timerInterval = setInterval(() => {
             timeLeft--;
             document.getElementById('timer-box').innerText = timeLeft + "s";
@@ -185,16 +163,86 @@
         }, 1000);
     }
 
-    // --- 4. ENGINE & AI ---
-    function getMoves(r, c, testBoard = board) {
-        const p = testBoard[r][c]; if(!p) return [];
-        const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
+    function render() {
+        canvas.width = window.innerWidth - 320;
+        canvas.height = window.innerHeight;
+        ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        offsetX = (canvas.width - (COLS * CELL)) / 2;
+        offsetY = (canvas.height - (ROWS * CELL)) / 2;
+
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                // Perspective Logic: Flip coordinates for Black player
+                let displayR = (myColor === 'b') ? (ROWS - 1 - r) : r;
+                let displayC = (myColor === 'b') ? (COLS - 1 - c) : c;
+
+                const x = displayC * CELL + offsetX;
+                const y = displayR * CELL + offsetY;
+                
+                ctx.fillStyle = (r + c) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x, y, CELL, CELL);
+                
+                if(selected && selected.r === r && selected.c === c) {
+                    ctx.fillStyle = "rgba(212,175,55,0.5)"; ctx.fillRect(x, y, CELL, CELL);
+                }
+                
+                validMoves.forEach(m => {
+                    if(m.r === r && m.c === c) {
+                        ctx.fillStyle = "rgba(0,0,0,0.15)";
+                        ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 6, 0, Math.PI*2); ctx.fill();
+                    }
+                });
+
+                if(board[r][c]) {
+                    ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#000";
+                    ctx.font = "35px Arial"; ctx.textAlign = "center";
+                    ctx.fillText(PIECES[board[r][c]], x + CELL/2, y + CELL/2 + 12);
+                }
+            }
+        }
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        if(turn !== myColor) return;
+        const rect = canvas.getBoundingClientRect();
+        const mx = (e.clientX - rect.left) - offsetX;
+        const my = (e.clientY - rect.top) - offsetY;
         
+        let c = Math.floor(mx/CELL);
+        let r = Math.floor(my/CELL);
+
+        // Convert click screen coordinates back to board logic coordinates
+        if(myColor === 'b') {
+            r = ROWS - 1 - r;
+            c = COLS - 1 - c;
+        }
+
+        if(r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
+
+        const move = validMoves.find(m => m.r === r && m.c === c);
+        if(move) {
+            board[r][c] = board[selected.r][selected.c];
+            board[selected.r][selected.c] = "";
+            const nextTurn = turn === 'w' ? 'b' : 'w';
+            if(isAI) { turn = nextTurn; makeAIMove(); } 
+            else { db.ref('games/'+currentGameId).update({board, turn: nextTurn}); }
+            selected = null; validMoves = [];
+        } else if(board[r][c] && board[r][c][0] === turn) {
+            selected = {r, c};
+            validMoves = getMoves(r, c);
+        }
+    });
+
+    // Basic AI & Engine logic remains the same...
+    function getMoves(r, c) {
+        const p = board[r][c]; if(!p) return [];
+        const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
         if(type==='P') {
-            let nr = (r+fwd+ROWS)%ROWS; if(!testBoard[nr][c]) moves.push({r:nr, c});
+            let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c});
             [-1, 1].forEach(dc => {
-                let nc = (c+dc+COLS)%COLS; 
-                if(testBoard[nr][nc] && testBoard[nr][nc][0]!==col) moves.push({r:nr, c:nc});
+                let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0]!==col) moves.push({r:nr, c:nc});
             });
         } else {
             const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
@@ -205,8 +253,8 @@
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
                     let nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
-                    if(testBoard[nr][nc] && testBoard[nr][nc][0]===col) break;
-                    moves.push({r:nr, c:nc}); if(testBoard[nr][nc]) break;
+                    if(board[nr][nc] && board[nr][nc][0]===col) break;
+                    moves.push({r:nr, c:nc}); if(board[nr][nc]) break;
                 }
             });
         }
@@ -215,97 +263,26 @@
 
     function startAIGame() {
         myColor = 'w';
-        const newBoard = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+        const nb = Array(ROWS).fill().map(() => Array(COLS).fill(""));
         ["R","N","B","Q","K","B","N","R"].forEach((p, i) => {
-            newBoard[2][4+i] = "b"+p; newBoard[3][4+i] = "bP";
-            newBoard[9][4+i] = "w"+p; newBoard[8][4+i] = "wP";
+            nb[2][4+i] = "b"+p; nb[3][4+i] = "bP"; nb[9][4+i] = "w"+p; nb[8][4+i] = "wP";
         });
-        board = newBoard;
-        currentGameId = "local_ai";
+        board = nb; turn = 'w';
         document.getElementById('game-info').style.display = 'block';
-        document.getElementById('opp-name').innerText = "VS NEURAL_LINK (AI)";
-        resetTimer();
+        document.getElementById('opp-name').innerText = "VS AI_CORE";
     }
 
     function makeAIMove() {
         setTimeout(() => {
-            let allMoves = [];
-            for(let r=0; r<ROWS; r++) {
-                for(let c=0; c<COLS; c++) {
-                    if(board[r][c] && board[r][c][0] === 'b') {
-                        let moves = getMoves(r, c);
-                        moves.forEach(m => allMoves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
-                    }
-                }
+            let all = [];
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+                if(board[r][c] && board[r][c][0]==='b') getMoves(r,c).forEach(m=>all.push({fr:r,fc:c,tr:m.r,tc:m.c}));
+            if(all.length) {
+                let m = all[Math.floor(Math.random()*all.length)];
+                board[m.tr][m.tc]=board[m.fr][m.fc]; board[m.fr][m.fc]=""; turn='w';
             }
-            if(allMoves.length > 0) {
-                const move = allMoves[Math.floor(Math.random() * allMoves.length)];
-                board[move.tr][move.tc] = board[move.fr][move.fc];
-                board[move.fr][move.fc] = "";
-                turn = 'w';
-                resetTimer();
-            }
-        }, 1000);
+        }, 800);
     }
-
-    // --- 5. RENDER & INPUT ---
-    function render() {
-        canvas.width = window.innerWidth - 320;
-        canvas.height = window.innerHeight;
-        ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
-
-        for(let r=-1; r<=ROWS; r++) {
-            for(let c=-1; c<=COLS; c++) {
-                const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
-                const x = c * CELL + camX, y = r * CELL + camY;
-                
-                ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
-                ctx.fillRect(x, y, CELL, CELL);
-                
-                if(selected && selected.r === rr && selected.c === rc) {
-                    ctx.fillStyle = "rgba(212,175,55,0.5)"; ctx.fillRect(x, y, CELL, CELL);
-                }
-                
-                validMoves.forEach(m => {
-                    if(m.r === rr && m.c === rc) {
-                        ctx.fillStyle = "rgba(0,0,0,0.15)";
-                        ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 8, 0, Math.PI*2); ctx.fill();
-                    }
-                });
-
-                if(board[rr] && board[rr][rc]) {
-                    ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
-                    ctx.font = "40px Arial"; ctx.textAlign = "center";
-                    ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 14);
-                }
-            }
-        }
-        requestAnimationFrame(render);
-    }
-
-    canvas.addEventListener('mousedown', e => {
-        if(turn !== myColor) return;
-        const mx = e.offsetX - camX, my = e.offsetY - camY;
-        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
-        const rr = (r%ROWS+ROWS)%ROWS, rc = (c%COLS+COLS)%COLS;
-
-        const move = validMoves.find(m => m.r === rr && m.c === rc);
-        if(move) {
-            board[rr][rc] = board[selected.r][selected.c];
-            board[selected.r][selected.c] = "";
-            const nextTurn = turn==='w'?'b':'w';
-            
-            if(isAI) {
-                turn = nextTurn; resetTimer(); makeAIMove();
-            } else {
-                db.ref('games/'+currentGameId).update({board, turn: nextTurn});
-            }
-            selected = null; validMoves = [];
-        } else if(board[rr][rc] && board[rr][rc][0] === turn) {
-            selected = {r: rr, c: rc};
-            validMoves = getMoves(rr, rc);
-        }
-    });
 </script>
 </body>
 </html>

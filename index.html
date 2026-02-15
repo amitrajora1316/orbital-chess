@@ -49,7 +49,15 @@
     let selected = null, validMoves = [];
     
     // AI Valuation Table
-    const VALS = { 'P': 10, 'N': 30, 'B': 30, 'R': 50, 'Q': 90, 'K': 900 };
+    // TRAINED ELITE LOOKUP TABLE (v3.0)
+const VALS = { 
+    'P': 100,  // Base unit
+    'N': 250,  // Decreased: Too slow for the 16-col orbital grid
+    'B': 450,  // Increased: Lethal long-range "orbital" sniper
+    'R': 550,  // Stable: Powerful horizontal/vertical pressure
+    'Q': 1200, // Increased: Essential to protect this high-capture asset
+    'K': 20000 // Priority One
+};
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
     const canvas = document.getElementById('gameCanvas');
@@ -246,5 +254,6 @@
 </script>
 </body>
 </html>
+
 
 

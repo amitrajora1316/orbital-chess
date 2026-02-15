@@ -269,3 +269,101 @@
         } else {
             let minEval = Infinity;
             for (let m of moves) {
+                let temp = b[m.end.r][m.end.c];
+                b[m.end.r][m.end.c] = b[m.start.r][m.start.c]; b[m.start.r][m.start.c] = "";
+                let ev = minimax(b, depth-1, alpha, beta, true).score;
+                b[m.start.r][m.start.c] = b[m.end.r][m.end.c]; b[m.end.r][m.end.c] = temp;
+                if (ev < minEval) { minEval = ev; bestMove = m; }
+                beta = Math.min(beta, ev); if (beta <= alpha) break;
+            }
+            return {score: minEval, move: bestMove};
+        }
+    }
+
+    async function executeAiMove() {
+        isThinking = true;
+        await new Promise(r => setTimeout(r, 600)); // Delay for realism
+        let res = minimax(board, aiDepth, -Infinity, Infinity, true);
+        if (res.move) {
+            board[res.move.end.r][res.move.end.c] = board[res.move.start.r][res.move.start.c];
+            board[res.move.start.r][res.move.start.c] = "";
+            turn = 'w';
+            updateUI();
+        }
+        isThinking = false;
+    }
+
+    function updateUI() {
+        document.getElementById('turn-txt').innerText = (turn === 'w' ? "WHITE" : "BLACK") + "'S TURN";
+        let score = evaluate(board);
+        document.getElementById('eval-fill').style.height = Math.max(5, Math.min(95, 50 - score/2)) + "%";
+    }
+
+    // --- RENDER & CONTROLS ---
+    function render() {
+        canvas.width = window.innerWidth - 240; canvas.height = window.innerHeight;
+        if (!gameStarted) { requestAnimationFrame(render); return; }
+
+        for(let r = -1; r < ROWS + 1; r++) {
+            for(let c = -1; c < COLS + 1; c++) {
+                const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
+                const x = c * CELL + camX, y = r * CELL + camY;
+                ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x, y, CELL, CELL);
+
+                if (selected && selected.r === rr && selected.c === rc) {
+                    ctx.fillStyle = "rgba(212, 175, 55, 0.4)"; ctx.fillRect(x, y, CELL, CELL);
+                }
+
+                validMoves.forEach(m => {
+                    if (m.r === rr && m.c === rc) {
+                        ctx.fillStyle = "rgba(0,0,0,0.15)";
+                        ctx.beginPath(); ctx.arc(x + CELL/2, y + CELL/2, 8, 0, Math.PI*2); ctx.fill();
+                    }
+                });
+
+                if (board[rr][rc]) {
+                    ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
+                    ctx.font = "50px serif"; ctx.textAlign = "center";
+                    ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 15);
+                }
+            }
+        }
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        if (!gameStarted || isThinking) return;
+        const mx = e.offsetX - camX, my = e.offsetY - camY;
+        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
+        const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
+
+        if (e.button === 0) {
+            const move = validMoves.find(m => m.r === rr && m.c === rc);
+            if (move) {
+                board[rr][rc] = board[selected.r][selected.c];
+                board[selected.r][selected.c] = "";
+                turn = turn === 'w' ? 'b' : 'w';
+                selected = null; validMoves = [];
+                updateUI();
+                if (gameMode === 'AI' && turn === 'b') executeAiMove();
+            } else if (board[rr][rc] && board[rr][rc][0] === turn) {
+                selected = {r: rr, c: rc};
+                validMoves = getMoves(board, rr, rc);
+            } else { selected = null; validMoves = []; }
+        } else { isPanning = true; lastMouse = {x: e.clientX, y: e.clientY}; }
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (isPanning) {
+            camX += e.clientX - lastMouse.x; camY += e.clientY - lastMouse.y;
+            lastMouse = {x: e.clientX, y: e.clientY};
+        }
+    });
+    window.addEventListener('mouseup', () => isPanning = false);
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    render();
+</script>
+</body>
+</html>

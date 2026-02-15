@@ -50,7 +50,6 @@
 
         #turn-txt { font-weight: 700; font-size: 1.1rem; transition: color 0.3s; }
 
-        /* --- PROBABILITY SLIDER --- */
         .eval-section {
             flex-grow: 1;
             display: flex;
@@ -88,9 +87,47 @@
             opacity: 0.6;
         }
 
-        canvas { flex-grow: 1; cursor: grab; }
-        canvas:active { cursor: grabbing; }
+        /* --- MENU OVERLAY --- */
+        #menu-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
 
+        .menu-card {
+            background: #1a1a1e;
+            padding: 40px;
+            border-radius: 20px;
+            border: 1px solid var(--accent);
+            text-align: center;
+            box-shadow: 0 0 50px rgba(212, 175, 55, 0.2);
+        }
+
+        .menu-btn {
+            display: block;
+            width: 200px;
+            padding: 15px;
+            margin: 10px;
+            background: transparent;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        .menu-btn:hover {
+            border-color: var(--accent);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        canvas { flex-grow: 1; cursor: grab; }
         .reset-btn {
             background: transparent;
             color: var(--accent);
@@ -99,20 +136,27 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            transition: 0.3s;
+            margin-top: 10px;
         }
-        .reset-btn:hover { background: var(--accent); color: #000; }
     </style>
 </head>
 <body>
 
+    <div id="menu-overlay">
+        <div class="menu-card">
+            <h1 style="color: var(--accent); margin-bottom: 30px;">SELECT MODE</h1>
+            <button class="menu-btn" onclick="startGame('AI', 1)">EASY AI</button>
+            <button class="menu-btn" onclick="startGame('AI', 2)">MEDIUM AI</button>
+            <button class="menu-btn" onclick="startGame('AI', 3)">HARD AI</button>
+            <button class="menu-btn" onclick="startGame('PVP', 0)">2 PLAYER</button>
+        </div>
+    </div>
+
     <div id="sidebar">
         <div class="header"><h1>ORBITAL</h1></div>
-        
         <div class="status-box">
             <div id="turn-txt">WHITE'S TURN</div>
         </div>
-
         <div class="eval-section">
             <span style="font-size: 0.7rem; opacity: 0.6; font-weight: 800;">PROBABILITY</span>
             <div id="eval-bar">
@@ -120,8 +164,7 @@
                 <div id="eval-fill"></div>
             </div>
         </div>
-
-        <button class="reset-btn" onclick="resetGame()">RESET MATCH</button>
+        <button class="reset-btn" onclick="location.reload()">MAIN MENU</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -133,8 +176,8 @@
 
     let board = [], hasMoved = [], turn = 'w', selected = null, validMoves = [];
     let camX = 60, camY = -180, isPanning = false, lastMouse = {x:0, y:0};
+    let gameMode = 'AI', aiDepth = 1, isThinking = false;
 
-    // --- SOUND ENGINE (Web Audio API) ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playMoveSound() {
         const osc = audioCtx.createOscillator();
@@ -146,14 +189,20 @@
         gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
     }
 
     const PIECES = {
         'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
         'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
     };
+
+    function startGame(mode, depth) {
+        gameMode = mode;
+        aiDepth = depth;
+        document.getElementById('menu-overlay').style.display = 'none';
+        resetGame();
+    }
 
     function resetGame() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
@@ -166,38 +215,25 @@
         turn = 'w'; selected = null; updateUI();
     }
 
-    function updateUI() {
-        const turnDiv = document.getElementById('turn-txt');
-        turnDiv.innerText = (turn === 'w' ? "WHITE" : "BLACK") + "'S TURN";
-        turnDiv.style.color = turn === 'w' ? '#fff' : '#d4af37';
-        
-        let score = 0;
-        const vals = {P:10, N:30, B:30, R:50, Q:90, K:1000};
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-            if(board[r][c]) score += vals[board[r][c][1]] * (board[r][c][0] === 'w' ? -1 : 1);
-        }
-        const percent = Math.max(2, Math.min(98, 50 - (score / 12)));
-        document.getElementById('eval-fill').style.height = percent + "%";
-    }
-
-    function getMoves(r, c) {
-        const p = board[r][c];
+    // --- CORE LOGIC ---
+    function getMoves(b, r, c, movedState) {
+        const p = b[r][c]; if(!p) return [];
         const color = p[0], type = p[1], moves = [];
         const fwd = color === 'w' ? -1 : 1;
-        const isFirst = !hasMoved[r][c];
+        const isFirst = !movedState[r][c];
 
         if (type === 'P') {
             let nr = (r + fwd + ROWS) % ROWS;
-            if (!board[nr][c]) {
+            if (!b[nr][c]) {
                 moves.push({r: nr, c});
                 if ((color === 'w' && r === 9) || (color === 'b' && r === 2)) {
                     let nr2 = (r + 2 * fwd + ROWS) % ROWS;
-                    if (!board[nr2][c]) moves.push({r: nr2, c});
+                    if (!b[nr2][c]) moves.push({r: nr2, c});
                 }
             }
             [-1, 1].forEach(dc => {
                 let nc = (c + dc + COLS) % COLS;
-                if (board[nr][nc] && board[nr][nc][0] !== color) moves.push({r: nr, c: nc});
+                if (b[nr][nc] && b[nr][nc][0] !== color) moves.push({r: nr, c: nc});
             });
         } else if (type === 'N') {
             [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dr, dc]) => {
@@ -213,43 +249,119 @@
                 if (isFirst && type !== 'K' && ((color === 'w' && dr >= 0) || (color === 'b' && dr <= 0))) return;
                 for (let i = 1; i < limit; i++) {
                     let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
-                    if (board[nr][nc] && board[nr][nc][0] === color) break;
+                    if (b[nr][nc] && b[nr][nc][0] === color) break;
                     moves.push({r: nr, c: nc});
-                    if (board[nr][nc]) break;
+                    if (b[nr][nc]) break;
                 }
             });
         }
-        return moves.filter(m => !board[m.r][m.c] || board[m.r][m.c][0] !== color);
+        return moves.filter(m => !b[m.r][m.c] || b[m.r][m.c][0] !== color);
     }
 
+    // --- AI ENGINE ---
+    function evaluate(b) {
+        const vals = {P:10, N:30, B:30, R:50, Q:90, K:10000};
+        let score = 0;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+            if(b[r][c]) score += vals[b[r][c][1]] * (b[r][c][0] === 'w' ? -1 : 1);
+        }
+        return score;
+    }
+
+    function minimax(b, movedState, depth, alpha, beta, maximizing) {
+        if (depth === 0) return {score: evaluate(b)};
+        let color = maximizing ? 'b' : 'w';
+        let allMoves = [];
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+            if(b[r][c].startsWith(color)) {
+                getMoves(b, r, c, movedState).forEach(m => allMoves.push({start:{r,c}, end:m}));
+            }
+        }
+        if (allMoves.length === 0) return {score: evaluate(b)};
+
+        let bestMove = null;
+        if (maximizing) {
+            let maxEval = -Infinity;
+            for (let m of allMoves) {
+                let temp = b[m.end.r][m.end.c];
+                let tempMoved = movedState[m.end.r][m.end.c];
+                b[m.end.r][m.end.c] = b[m.start.r][m.start.c]; b[m.start.r][m.start.c] = "";
+                movedState[m.end.r][m.end.c] = true;
+                let ev = minimax(b, movedState, depth-1, alpha, beta, false).score;
+                b[m.start.r][m.start.c] = b[m.end.r][m.end.c]; b[m.end.r][m.end.c] = temp;
+                movedState[m.end.r][m.end.c] = tempMoved;
+                if (ev > maxEval) { maxEval = ev; bestMove = m; }
+                alpha = Math.max(alpha, ev); if (beta <= alpha) break;
+            }
+            return {score: maxEval, move: bestMove};
+        } else {
+            let minEval = Infinity;
+            for (let m of allMoves) {
+                let temp = b[m.end.r][m.end.c];
+                let tempMoved = movedState[m.end.r][m.end.c];
+                b[m.end.r][m.end.c] = b[m.start.r][m.start.c]; b[m.start.r][m.start.c] = "";
+                movedState[m.end.r][m.end.c] = true;
+                let ev = minimax(b, movedState, depth-1, alpha, beta, true).score;
+                b[m.start.r][m.start.c] = b[m.end.r][m.end.c]; b[m.end.r][m.end.c] = temp;
+                movedState[m.end.r][m.end.c] = tempMoved;
+                if (ev < minEval) { minEval = ev; bestMove = m; }
+                beta = Math.min(beta, ev); if (beta <= alpha) break;
+            }
+            return {score: minEval, move: bestMove};
+        }
+    }
+
+    async function aiMove() {
+        isThinking = true;
+        // Small delay to let UI render turn change
+        await new Promise(r => setTimeout(r, 500));
+        let result = minimax(board, hasMoved, aiDepth, -Infinity, Infinity, true);
+        if (result.move) {
+            const {start, end} = result.move;
+            executeMove(start, end);
+        }
+        isThinking = false;
+    }
+
+    function executeMove(start, end) {
+        board[end.r][end.c] = board[start.r][start.c];
+        board[start.r][start.c] = "";
+        hasMoved[end.r][end.c] = true;
+        turn = turn === 'w' ? 'b' : 'w';
+        playMoveSound();
+        updateUI();
+        if (gameMode === 'AI' && turn === 'b') aiMove();
+    }
+
+    function updateUI() {
+        const turnDiv = document.getElementById('turn-txt');
+        turnDiv.innerText = (turn === 'w' ? "WHITE" : "BLACK") + "'S TURN";
+        let score = evaluate(board);
+        const percent = Math.max(2, Math.min(98, 50 - (score / 15)));
+        document.getElementById('eval-fill').style.height = percent + "%";
+    }
+
+    // --- RENDER & INPUT ---
     function render() {
-        canvas.width = window.innerWidth - 240;
-        canvas.height = window.innerHeight;
-        
+        canvas.width = window.innerWidth - 240; canvas.height = window.innerHeight;
         for(let r = -2; r < ROWS + 2; r++) {
             for(let c = -2; c < COLS + 2; c++) {
                 const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
                 const x = c * CELL + camX, y = r * CELL + camY;
-
                 ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
                 ctx.fillRect(x, y, CELL, CELL);
-
                 if (selected && selected.r === rr && selected.c === rc) {
-                    ctx.fillStyle = "rgba(212, 175, 55, 0.4)";
-                    ctx.fillRect(x, y, CELL, CELL);
+                    ctx.fillStyle = "rgba(212, 175, 55, 0.4)"; ctx.fillRect(x, y, CELL, CELL);
                 }
-
                 validMoves.forEach(m => {
                     if (m.r === rr && m.c === rc) {
                         ctx.fillStyle = "rgba(0,0,0,0.1)";
                         ctx.beginPath(); ctx.arc(x + CELL/2, y + CELL/2, CELL/8, 0, Math.PI*2); ctx.fill();
                     }
                 });
-
                 if (board[rr][rc]) {
                     ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#111";
-                    ctx.font = "52px serif";
-                    ctx.textAlign = "center";
+                    ctx.font = "52px serif"; ctx.textAlign = "center";
                     ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 18);
                 }
             }
@@ -258,7 +370,7 @@
     }
 
     canvas.addEventListener('mousedown', e => {
-        if (audioCtx.state === 'suspended') audioCtx.resume();
+        if (isThinking || audioCtx.state === 'suspended') audioCtx.resume();
         const mx = e.offsetX - camX, my = e.offsetY - camY;
         const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
         const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
@@ -266,31 +378,24 @@
         if (e.button === 0) {
             const move = validMoves.find(m => m.r === rr && m.c === rc);
             if (move) {
-                board[rr][rc] = board[selected.r][selected.c];
-                board[selected.r][selected.c] = "";
-                hasMoved[rr][rc] = true;
-                turn = turn === 'w' ? 'b' : 'w';
+                executeMove(selected, {r: rr, c: rc});
                 selected = null; validMoves = [];
-                playMoveSound();
-                updateUI();
             } else if (board[rr][rc] && board[rr][rc][0] === turn) {
                 selected = {r: rr, c: rc};
-                validMoves = getMoves(rr, rc);
+                validMoves = getMoves(board, rr, rc, hasMoved);
             } else { selected = null; validMoves = []; }
         } else { isPanning = true; lastMouse = {x: e.clientX, y: e.clientY}; }
     });
 
     window.addEventListener('mousemove', e => {
         if (isPanning) {
-            camX += e.clientX - lastMouse.x;
-            camY += e.clientY - lastMouse.y;
+            camX += e.clientX - lastMouse.x; camY += e.clientY - lastMouse.y;
             lastMouse = {x: e.clientX, y: e.clientY};
         }
     });
     window.addEventListener('mouseup', () => isPanning = false);
     window.addEventListener('contextmenu', e => e.preventDefault());
 
-    resetGame();
     render();
 </script>
 </body>

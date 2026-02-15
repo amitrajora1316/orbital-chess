@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Orbital Chess | Vanguard</title>
+    <style>
+        :root {
+            --bg: #0d0d0f;
+            --panel: #1a1a1e;
+            --accent: #d4af37;
+            --white-sq: #e8d5b5;
+            --black-sq: #8b6b4d;
+            --text: #ffffff;
+            --font: 'Segoe UI', system-ui, sans-serif;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            font-family: var(--font);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- SIDEBAR UI --- */
+        #sidebar {
+            width: 240px;
+            background: var(--panel);
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px;
+            border-right: 2px solid #2d2d35;
+            box-shadow: 5px 0 25px rgba(0,0,0,0.6);
+            z-index: 10;
+        }
+
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 1.2rem; letter-spacing: 2px; color: var(--accent); margin: 0; }
+
+        .status-box {
+            background: #25252b;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #333;
+            margin-bottom: 40px;
+        }
+
+        #turn-txt { font-weight: 700; font-size: 1.1rem; transition: color 0.3s; }
+
+        /* --- PROBABILITY SLIDER --- */
+        .eval-section {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #eval-bar {
+            width: 40px;
+            height: 100%;
+            background: #111;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #444;
+        }
+
+        #eval-fill {
+            width: 100%;
+            background: linear-gradient(180deg, #fff 0%, #bbb 100%);
+            position: absolute;
+            bottom: 0;
+            height: 50%;
+            transition: height 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .mid-line {
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            height: 2px;
+            background: #ff4757;
+            z-index: 5;
+            opacity: 0.6;
+        }
+
+        canvas { flex-grow: 1; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+
+        .reset-btn {
+            background: transparent;
+            color: var(--accent);
+            border: 1px solid var(--accent);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+        }
+        .reset-btn:hover { background: var(--accent); color: #000; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="header"><h1>ORBITAL</h1></div>
+        
+        <div class="status-box">
+            <div id="turn-txt">WHITE'S TURN</div>
+        </div>
+
+        <div class="eval-section">
+            <span style="font-size: 0.7rem; opacity: 0.6; font-weight: 800;">PROBABILITY</span>
+            <div id="eval-bar">
+                <div class="mid-line"></div>
+                <div id="eval-fill"></div>
+            </div>
+        </div>
+
+        <button class="reset-btn" onclick="resetGame()">RESET MATCH</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const ROWS = 12, COLS = 16, CELL = 80;
+
+    let board = [], hasMoved = [], turn = 'w', selected = null, validMoves = [];
+    let camX = 60, camY = -180, isPanning = false, lastMouse = {x:0, y:0};
+
+    // --- SOUND ENGINE (Web Audio API) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playMoveSound() {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    const PIECES = {
+        'wK': '♔', 'wQ': '♕', 'wR': '♖', 'wB': '♗', 'wN': '♘', 'wP': '♙',
+        'bK': '♚', 'bQ': '♛', 'bR': '♜', 'bB': '♝', 'bN': '♞', 'bP': '♟'
+    };
+
+    function resetGame() {
+        board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+        hasMoved = Array(ROWS).fill().map(() => Array(COLS).fill(false));
+        const layout = ["R", "N", "B", "Q", "K", "B", "N", "R"];
+        layout.forEach((p, i) => {
+            board[2][4+i] = "b"+p; board[3][4+i] = "bP";
+            board[9][4+i] = "w"+p; board[8][4+i] = "wP";
+        });
+        turn = 'w'; selected = null; updateUI();
+    }
+
+    function updateUI() {
+        const turnDiv = document.getElementById('turn-txt');
+        turnDiv.innerText = (turn === 'w' ? "WHITE" : "BLACK") + "'S TURN";
+        turnDiv.style.color = turn === 'w' ? '#fff' : '#d4af37';
+        
+        let score = 0;
+        const vals = {P:10, N:30, B:30, R:50, Q:90, K:1000};
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+            if(board[r][c]) score += vals[board[r][c][1]] * (board[r][c][0] === 'w' ? -1 : 1);
+        }
+        const percent = Math.max(2, Math.min(98, 50 - (score / 12)));
+        document.getElementById('eval-fill').style.height = percent + "%";
+    }
+
+    function getMoves(r, c) {
+        const p = board[r][c];
+        const color = p[0], type = p[1], moves = [];
+        const fwd = color === 'w' ? -1 : 1;
+        const isFirst = !hasMoved[r][c];
+
+        if (type === 'P') {
+            let nr = (r + fwd + ROWS) % ROWS;
+            if (!board[nr][c]) {
+                moves.push({r: nr, c});
+                if ((color === 'w' && r === 9) || (color === 'b' && r === 2)) {
+                    let nr2 = (r + 2 * fwd + ROWS) % ROWS;
+                    if (!board[nr2][c]) moves.push({r: nr2, c});
+                }
+            }
+            [-1, 1].forEach(dc => {
+                let nc = (c + dc + COLS) % COLS;
+                if (board[nr][nc] && board[nr][nc][0] !== color) moves.push({r: nr, c: nc});
+            });
+        } else if (type === 'N') {
+            [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]].forEach(([dr, dc]) => {
+                if (isFirst && ((color === 'w' && dr >= 0) || (color === 'b' && dr <= 0))) return;
+                moves.push({r: (r + dr + ROWS) % ROWS, c: (c + dc + COLS) % COLS});
+            });
+        } else {
+            const dirs = type === 'R' ? [[0,1],[0,-1],[1,0],[-1,0]] :
+                         type === 'B' ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
+                         [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            const limit = type === 'K' ? 2 : 16;
+            dirs.forEach(([dr, dc]) => {
+                if (isFirst && type !== 'K' && ((color === 'w' && dr >= 0) || (color === 'b' && dr <= 0))) return;
+                for (let i = 1; i < limit; i++) {
+                    let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
+                    if (board[nr][nc] && board[nr][nc][0] === color) break;
+                    moves.push({r: nr, c: nc});
+                    if (board[nr][nc]) break;
+                }
+            });
+        }
+        return moves.filter(m => !board[m.r][m.c] || board[m.r][m.c][0] !== color);
+    }
+
+    function render() {
+        canvas.width = window.innerWidth - 240;
+        canvas.height = window.innerHeight;
+        
+        for(let r = -2; r < ROWS + 2; r++) {
+            for(let c = -2; c < COLS + 2; c++) {
+                const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
+                const x = c * CELL + camX, y = r * CELL + camY;
+
+                ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x, y, CELL, CELL);
+
+                if (selected && selected.r === rr && selected.c === rc) {
+                    ctx.fillStyle = "rgba(212, 175, 55, 0.4)";
+                    ctx.fillRect(x, y, CELL, CELL);
+                }
+
+                validMoves.forEach(m => {
+                    if (m.r === rr && m.c === rc) {
+                        ctx.fillStyle = "rgba(0,0,0,0.1)";
+                        ctx.beginPath(); ctx.arc(x + CELL/2, y + CELL/2, CELL/8, 0, Math.PI*2); ctx.fill();
+                    }
+                });
+
+                if (board[rr][rc]) {
+                    ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#111";
+                    ctx.font = "52px serif";
+                    ctx.textAlign = "center";
+                    ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 18);
+                }
+            }
+        }
+        requestAnimationFrame(render);
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const mx = e.offsetX - camX, my = e.offsetY - camY;
+        const c = Math.floor(mx/CELL), r = Math.floor(my/CELL);
+        const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
+
+        if (e.button === 0) {
+            const move = validMoves.find(m => m.r === rr && m.c === rc);
+            if (move) {
+                board[rr][rc] = board[selected.r][selected.c];
+                board[selected.r][selected.c] = "";
+                hasMoved[rr][rc] = true;
+                turn = turn === 'w' ? 'b' : 'w';
+                selected = null; validMoves = [];
+                playMoveSound();
+                updateUI();
+            } else if (board[rr][rc] && board[rr][rc][0] === turn) {
+                selected = {r: rr, c: rc};
+                validMoves = getMoves(rr, rc);
+            } else { selected = null; validMoves = []; }
+        } else { isPanning = true; lastMouse = {x: e.clientX, y: e.clientY}; }
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (isPanning) {
+            camX += e.clientX - lastMouse.x;
+            camY += e.clientY - lastMouse.y;
+            lastMouse = {x: e.clientX, y: e.clientY};
+        }
+    });
+    window.addEventListener('mouseup', () => isPanning = false);
+    window.addEventListener('contextmenu', e => e.preventDefault());
+
+    resetGame();
+    render();
+</script>
+</body>
+</html>

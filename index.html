@@ -2,19 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Orbital Arena | Vanguard Strict</title>
+    <title>Orbital Arena | Final Edition</title>
     <style>
         :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
         body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar Styling */
         #sidebar { width: 320px; background: var(--panel); display: flex; flex-direction: column; padding: 20px; border-right: 2px solid #2d2d35; box-sizing: border-box; }
-        .header h1 { font-size: 1rem; letter-spacing: 4px; color: var(--accent); text-align: center; margin-bottom: 30px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        #game-info { background: #25252b; padding: 20px; border-radius: 8px; text-align: center; border-left: 4px solid var(--accent); margin-bottom: 20px; }
+        .header h1 { font-size: 1rem; letter-spacing: 4px; color: var(--accent); text-align: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        
+        #game-info { background: #25252b; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid var(--accent); margin-bottom: 15px; }
         #timer-box { font-size: 2rem; font-weight: bold; color: var(--accent); }
         .turn-label { font-size: 0.8rem; color: #888; text-transform: uppercase; }
-        #gallery { flex-grow: 1; margin-top: 20px; border-top: 1px solid #333; padding-top: 20px; overflow-y: auto; }
+
+        /* Rules Primer Styling */
+        #rules-primer { background: rgba(0,0,0,0.3); padding: 12px; border-radius: 6px; font-size: 0.8rem; line-height: 1.4; color: #bbb; margin-bottom: 15px; border: 1px solid #333; }
+        #rules-primer h2 { font-size: 0.7rem; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-top: 0; margin-bottom: 8px; }
+        #rules-primer ul { padding-left: 15px; margin: 0; }
+        #rules-primer li { margin-bottom: 5px; }
+
+        #gallery { flex-grow: 1; border-top: 1px solid #333; padding-top: 15px; overflow-y: auto; }
         .gallery-label { font-size: 0.7rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 10px; text-transform: uppercase; }
         .captured-row { display: flex; flex-wrap: wrap; gap: 5px; min-height: 40px; margin-bottom: 15px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 4px; }
         .captured-piece { font-size: 1.5rem; opacity: 0.8; }
+
         canvas { flex-grow: 1; cursor: crosshair; background: #000; }
         .btn { background: var(--accent); color: #000; border: none; padding: 12px; border-radius: 4px; font-weight: 700; cursor: pointer; transition: 0.2s; margin-top: 10px; width: 100%; }
         #overlay, #victory-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
@@ -25,37 +36,55 @@
 </head>
 <body>
     <div id="check-alert">CHECK!</div>
+    
     <div id="overlay">
         <div class="start-box">
             <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
-            <p style="color:#888;">TOPOLOGY: TOROIDAL | START: FORWARD ONLY</p>
+            <p style="color:#888;">TOPOLOGY: TOROIDAL | TIMER: 60s LOSS</p>
             <div style="display:flex; gap:15px; margin-top:20px;">
                 <button class="btn" onclick="startGame('w')">PLAY AS WHITE</button>
                 <button class="btn" style="background:#fff; color:#000;" onclick="startGame('b')">PLAY AS BLACK</button>
             </div>
         </div>
     </div>
+
     <div id="victory-overlay" style="display:none;">
         <div class="start-box">
             <h1 id="winner-text" style="color:var(--accent); letter-spacing:5px;">VICTORY</h1>
+            <p id="sub-winner-text" style="color:#888;">GAME OVER</p>
             <button class="btn" onclick="location.reload()">REMATCH</button>
         </div>
     </div>
+
     <div id="sidebar">
         <div class="header"><h1>VANGUARD AI</h1></div>
+        
         <div id="game-info">
             <div id="player-tag" style="font-size: 0.9rem; color: var(--accent); margin-bottom: 5px;">YOU: WHITE</div>
             <div class="turn-label" id="turn-text">OFFLINE</div>
             <div id="timer-box">60s</div>
         </div>
+
+        <div id="rules-primer">
+            <h2>Tactical Primer</h2>
+            <ul>
+                <li><strong>Toroidal:</strong> Board wraps left-to-right & top-to-bottom.</li>
+                <li><strong>Inertia:</strong> Major pieces (Q, R, B, N) move only <b>forward</b> on their 1st turn.</li>
+                <li><strong>Royal:</strong> King moves in any direction from start.</li>
+                <li><strong>Timer:</strong> Loss of game at 0s.</li>
+            </ul>
+        </div>
+
         <div id="gallery">
             <div class="gallery-label">Captured by AI</div>
             <div id="captured-by-ai" class="captured-row"></div>
             <div class="gallery-label">Captured by You</div>
             <div id="captured-by-player" class="captured-row"></div>
         </div>
+        
         <button class="btn" onclick="location.reload()">RESTART</button>
     </div>
+
     <canvas id="gameCanvas"></canvas>
 
 <script>
@@ -70,7 +99,6 @@
     function startGame(side) {
         myColor = side; gameActive = true;
         document.getElementById('overlay').style.display = 'none';
-        document.getElementById('player-tag').innerText = "YOU: " + (side === 'w' ? "WHITE" : "BLACK");
         initBoard();
         resetTimer();
         if(turn !== myColor) aiMove();
@@ -134,7 +162,7 @@
 
     function aiMove() {
         if(!gameActive) return;
-        document.getElementById('turn-text').innerText = "VANGUARD SCANNING...";
+        document.getElementById('turn-text').innerText = "SCANNING...";
         setTimeout(() => {
             const aiColor = (myColor === 'w' ? 'b' : 'w');
             let bestMove = null, bestScore = -Infinity, moves = [];
@@ -161,20 +189,19 @@
                 if(total > bestScore) { bestScore = total; bestMove = move; }
                 board[move.fr][move.fc] = source; board[move.tr][move.tc] = target;
             });
-            if(bestMove) executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
-        }, 300);
+            if(bestMove && gameActive) executeMove(bestMove.fr, bestMove.fc, bestMove.tr, bestMove.tc);
+        }, 350);
     }
 
     function executeMove(fr, fc, tr, tc) {
+        if(!gameActive) return;
         let piece = board[fr][fc];
         const victim = board[tr][tc];
         if(victim) {
             updateGallery(victim);
-            if(victim[1] === 'K') endGame(piece[0] === myColor ? "PLAYER" : "AI");
+            if(victim[1] === 'K') endGame(piece[0] === myColor ? "PLAYER" : "AI", "THE KING HAS FALLEN");
         }
-        // Pawn Promotion
         if(piece[1] === 'P' && (tr === 0 || tr === ROWS - 1)) piece = piece[0] + 'Q';
-        
         board[tr][tc] = piece; board[fr][fc] = "";
         hasMoved[tr][tc] = true; hasMoved[fr][fc] = false; 
         lastMove = {fr, fc, tr, tc};
@@ -197,18 +224,28 @@
         document.getElementById(containerId).appendChild(span);
     }
 
-    function endGame(winner) {
-        gameActive = false; clearInterval(timerInterval);
+    function endGame(winner, reason) {
+        gameActive = false; 
+        clearInterval(timerInterval);
         document.getElementById('victory-overlay').style.display = 'flex';
         document.getElementById('winner-text').innerText = winner === "PLAYER" ? "ARENA CONQUERED" : "VANGUARD VICTORIOUS";
+        document.getElementById('sub-winner-text').innerText = reason;
     }
 
     function resetTimer() {
-        clearInterval(timerInterval); timeLeft = 60;
+        clearInterval(timerInterval);
+        timeLeft = 60;
+        document.getElementById('timer-box').innerText = timeLeft + "s";
         document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR TURN" : "AI THINKING...";
+        
         timerInterval = setInterval(() => {
-            timeLeft--; document.getElementById('timer-box').innerText = timeLeft + "s";
-            if(timeLeft <= 0) { turn = (turn === 'w' ? 'b' : 'w'); if(turn !== myColor) aiMove(); }
+            timeLeft--;
+            document.getElementById('timer-box').innerText = timeLeft + "s";
+            if(timeLeft <= 0) {
+                const loser = turn === myColor ? "AI" : "PLAYER";
+                const msg = turn === myColor ? "TIME EXPIRED" : "AI STALLED";
+                endGame(loser, msg);
+            }
         }, 1000);
     }
 
@@ -234,7 +271,7 @@
     }
 
     canvas.addEventListener('mousedown', e => {
-        if(turn !== myColor || !gameActive) return;
+        if(!gameActive || turn !== myColor) return;
         const rect = canvas.getBoundingClientRect();
         let c = Math.floor((e.clientX - rect.left - (canvas.width - COLS*CELL)/2) / CELL);
         let r = Math.floor((e.clientY - rect.top - (canvas.height - ROWS*CELL)/2) / CELL);

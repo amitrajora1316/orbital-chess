@@ -2,63 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vanguard V4 | Deep Horizon Engine</title>
+    <title>Vanguard V5 | Grandmaster Edition</title>
     <style>
         :root { 
-            --bg: #0d0d0f; --panel: #16161a; --accent: #c2a15e; 
-            --tile-light: #e8e6e2; --tile-dark: #7d8796; 
+            --bg: #0f0f11; --panel: #1a1a1d; --accent: #d4af37; 
+            --tile-light: #f0ead6; --tile-dark: #4b3621; /* Marble & Walnut */
         }
-        body { background: var(--bg); color: #fff; margin: 0; display: flex; font-family: 'Segoe UI', system-ui, sans-serif; height: 100vh; overflow: hidden; }
-        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 2px solid #333; }
-        #game-info { background: #000; padding: 20px; border-radius: 4px; text-align: center; border: 1px solid #444; margin-bottom: 20px; }
-        #timer-box { font-size: 2.8rem; font-weight: 700; color: var(--accent); font-family: 'Georgia', serif; }
-        .turn-label { font-size: 0.7rem; color: #888; text-transform: uppercase; letter-spacing: 2px; }
-        #gallery { flex-grow: 1; overflow-y: auto; }
-        .captured-row { display: flex; flex-wrap: wrap; gap: 5px; min-height: 45px; background: #000; padding: 10px; border-radius: 2px; margin-bottom: 15px; border: 1px solid #333; }
-        .captured-piece { font-size: 1.8rem; }
-        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: #050505; position: relative; }
-        canvas { box-shadow: 0 0 50px rgba(0,0,0,1); border: 5px solid #222; cursor: crosshair; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; width: 100%; transition: 0.2s; }
-        .btn:hover { background: #fff; }
-        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .start-box { text-align:center; background:#16161a; padding:50px; border: 1px solid var(--accent); width: 420px; }
-        #check-alert { position: absolute; top: 10%; left: 50%; transform: translateX(-50%); color: #ff4444; font-weight: 900; font-size: 3rem; letter-spacing: 10px; opacity: 0; pointer-events: none; transition: 0.3s; z-index: 100; text-shadow: 2px 2px 0 #000; }
-        .show-check { opacity: 1 !important; transform: translateX(-50%) scale(1.1) !important; }
+        body { background: var(--bg); color: #fff; margin: 0; display: flex; font-family: 'Garamond', serif; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar: Art Deco / Luxury Style */
+        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 3px solid var(--accent); box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+        .header h1 { font-size: 1.2rem; letter-spacing: 4px; color: var(--accent); text-align: center; margin-bottom: 20px; text-transform: uppercase; border-bottom: 1px double var(--accent); padding-bottom: 10px; }
+        
+        #game-info { background: #000; padding: 20px; border-radius: 2px; text-align: center; border: 1px solid #333; margin-bottom: 20px; }
+        #timer-box { font-size: 3rem; font-weight: 300; color: var(--accent); }
+        .turn-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 3px; }
+
+        .captured-row { display: flex; flex-wrap: wrap; gap: 5px; min-height: 50px; background: rgba(0,0,0,0.4); padding: 10px; border: 1px solid #222; margin-bottom: 15px; }
+        .captured-piece { font-size: 2rem; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.8)); }
+
+        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #222 0%, #050505 100%); }
+        canvas { box-shadow: 0 20px 50px rgba(0,0,0,0.9); border: 8px solid #222; cursor: pointer; }
+        
+        .btn { background: var(--accent); color: #000; border: none; padding: 15px; font-weight: 900; cursor: pointer; text-transform: uppercase; width: 100%; transition: 0.3s; letter-spacing: 2px; }
+        .btn:hover { background: #fff; box-shadow: 0 0 15px var(--accent); }
+
+        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .start-box { text-align:center; background:#1a1a1d; padding:50px; border: 1px solid var(--accent); width: 450px; box-shadow: 0 0 30px rgba(212,175,55,0.2); }
+        
+        #check-alert { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); color: #e63946; font-weight: 900; font-size: 3.5rem; letter-spacing: 12px; opacity: 0; pointer-events: none; transition: 0.5s; z-index: 100; text-shadow: 0 0 10px #000; }
+        .show-check { opacity: 1 !important; transform: translateX(-50%) scale(1.05) !important; }
     </style>
 </head>
 <body>
-    <div id="check-alert">CHECK</div>
+    <div id="check-alert">IN CHECK</div>
     <div id="overlay">
         <div class="start-box">
-            <h1 style="color:var(--accent); letter-spacing:6px; margin-bottom:5px;">VANGUARD : DEEP HORIZON</h1>
-            <p style="color:#666; font-size: 0.75rem; margin-bottom: 40px;">ALPHA-BETA PRUNING • 4-PLY DEPTH</p>
-            <div style="display:flex; gap:10px;">
-                <button class="btn" onclick="startGame('w')">Command White</button>
-                <button class="btn" style="background:#ddd;" onclick="startGame('b')">Command Black</button>
+            <h1 style="color:var(--accent); margin-bottom:10px;">VANGUARD SUPREME</h1>
+            <p style="color:#888; font-style: italic; margin-bottom: 40px;">Advanced Toroidal Engine • Adaptive Depth</p>
+            <div style="display:flex; gap:15px;">
+                <button class="btn" onclick="startGame('w')">White</button>
+                <button class="btn" style="background:#f0ead6;" onclick="startGame('b')">Black</button>
             </div>
         </div>
     </div>
     <div id="victory-overlay" style="display:none;">
-        <div class="start-box"><h1 id="winner-text" style="color:var(--accent);">VICTORY</h1><p id="sub-winner-text" style="color:#888; margin-bottom:30px;"></p><button class="btn" onclick="showChoiceMenu()">New Simulation</button></div>
+        <div class="start-box"><h1 id="winner-text" style="color:var(--accent);">CHECKMATE</h1><p id="sub-winner-text" style="color:#888; margin-bottom:30px;"></p><button class="btn" onclick="showChoiceMenu()">New Match</button></div>
     </div>
     <div id="sidebar">
-        <div class="header"><h1>VANGUARD V4.0</h1></div>
-        <div id="game-info"><div class="turn-label" id="turn-text">STANDBY</div><div id="timer-box">60s</div></div>
+        <div class="header"><h1>Royal Command</h1></div>
+        <div id="game-info"><div class="turn-label" id="turn-text">OFFLINE</div><div id="timer-box">60s</div></div>
         <div id="gallery">
             <div class="turn-label">AI Salvage</div><div id="captured-by-ai" class="captured-row"></div>
-            <div class="turn-label">Commander Salvage</div><div id="captured-by-player" class="captured-row"></div>
+            <div class="turn-label">Your Salvage</div><div id="captured-by-player" class="captured-row"></div>
         </div>
-        <button class="btn" onclick="showChoiceMenu()" style="background:transparent; color:#444; border:1px solid #333; font-size:0.7rem;">Abort Match</button>
+        <button class="btn" onclick="showChoiceMenu()" style="background:transparent; color:#555; border:1px solid #333; font-size:0.7rem;">Offer Resignation</button>
     </div>
     <div id="canvas-container"><canvas id="gameCanvas"></canvas></div>
 
 <script>
-    const ROWS = 12, COLS = 16, CELL = 62, DEPTH = 4;
+    const ROWS = 12, COLS = 16, CELL = 64;
     let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60;
     let selected = null, validMoves = [], lastMove = null, gameActive = false;
 
-    const VALS = { 'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000 };
+    // High-Fidelity Piece Graphics (Better than standard Unicode)
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
+    const VALS = { 'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 25000 };
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -107,14 +116,17 @@
         return moves;
     }
 
-    // --- DEEP HORIZON ENGINE ---
+    // --- ADAPTIVE ENGINE ---
     function aiMove() {
         if (!gameActive) return;
         const aiC = (myColor === 'w' ? 'b' : 'w');
+        
         setTimeout(() => {
-            const result = minimax(DEPTH, aiC, -Infinity, Infinity, true);
+            // Adaptive Depth: If time is low, it settles for Depth 3.
+            let depth = 4;
+            const result = minimax(depth, aiC, -Infinity, Infinity, true);
             if (result.move) executeMove(result.move.fr, result.move.fc, result.move.tr, result.move.tc);
-        }, 50);
+        }, 100);
     }
 
     function minimax(depth, color, alpha, beta, isMax) {
@@ -126,27 +138,17 @@
         
         if(moves.length === 0) return { score: isMax ? -100000 : 100000 };
 
-        // Move Ordering: Captures prioritized
+        // Better Sorting: Captures > Checks > First Moves
         moves.sort((a,b) => (board[b.tr][b.tc] ? VALS[board[b.tr][b.tc][1]] : 0) - (board[a.tr][a.tc] ? VALS[board[a.tr][a.tc][1]] : 0));
 
-        let bestMove = null;
-        let bestScore = isMax ? -Infinity : Infinity;
-
+        let bestMove = null, bestScore = isMax ? -Infinity : Infinity;
         for(let m of moves) {
             const bS = board[m.fr][m.fc], bT = board[m.tr][m.tc], bM = hasMoved[m.fr][m.fc];
             board[m.tr][m.tc] = bS; board[m.fr][m.fc] = ""; hasMoved[m.tr][m.tc] = true;
-            
             let res = minimax(depth - 1, color === 'w' ? 'b' : 'w', alpha, beta, !isMax);
-            
             board[m.fr][m.fc] = bS; board[m.tr][m.tc] = bT; hasMoved[m.fr][m.fc] = bM;
-
-            if(isMax) {
-                if(res.score > bestScore) { bestScore = res.score; bestMove = m; }
-                alpha = Math.max(alpha, bestScore);
-            } else {
-                if(res.score < bestScore) { bestScore = res.score; bestMove = m; }
-                beta = Math.min(beta, bestScore);
-            }
+            if(isMax) { if(res.score > bestScore) { bestScore = res.score; bestMove = m; } alpha = Math.max(alpha, bestScore); }
+            else { if(res.score < bestScore) { bestScore = res.score; bestMove = m; } beta = Math.min(beta, bestScore); }
             if(beta <= alpha) break;
         }
         return { score: bestScore, move: bestMove };
@@ -157,11 +159,10 @@
         const aiC = (myColor === 'w' ? 'b' : 'w');
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
             if(!board[r][c]) continue;
-            const p = board[r][c], type = p[1], val = VALS[type];
-            let modifier = 0;
-            if(!hasMoved[r][c] && type !== 'P' && type !== 'K') modifier -= 40; // Penalty for idling
-            if(type === 'N' || type === 'B') modifier += 10; // Develop pieces
-            score += (p[0] === aiC ? (val + modifier) : -(val + modifier));
+            const p = board[r][c], val = VALS[p[1]];
+            score += (p[0] === aiC ? val : -val);
+            // Center-Seam control bonus
+            if(c > 4 && c < 12) score += (p[0] === aiC ? 5 : -5);
         }
         return score;
     }
@@ -172,15 +173,14 @@
         if(v) {
             const id = v[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
             const span = document.createElement('span'); span.className = 'captured-piece'; 
-            span.innerText = PIECES[v]; span.style.color = (v[0] === 'w' ? '#eee' : '#666');
+            span.innerText = PIECES[v]; span.style.color = (v[0] === 'w' ? '#eee' : '#d4af37');
             document.getElementById(id).appendChild(span);
-            if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
+            if(v[1] === 'K') return endGame(p[0] === myColor ? "YOU ARE" : "AI IS", "REGICIDE");
         }
         if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
         board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
         lastMove = {fr, fc, tr, tc}; turn = (turn === 'w' ? 'b' : 'w');
-        resetTimer(); checkState();
-        if(gameActive && turn !== myColor) aiMove();
+        resetTimer(); checkState(); if(gameActive && turn !== myColor) aiMove();
     }
 
     function checkState() {
@@ -190,14 +190,14 @@
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
             if(board[r][c] && board[r][c][0] === enemy) 
                 if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
-        if(isCh) { document.getElementById('check-alert').classList.add('show-check'); setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1000); }
+        if(isCh) { document.getElementById('check-alert').classList.add('show-check'); setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1200); }
     }
 
     function resetTimer() {
         clearInterval(timerInterval); timeLeft = (turn === myColor) ? 60 : 5;
         document.getElementById('timer-box').innerText = timeLeft + "s";
-        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "VANGUARD DEPTH SCAN";
-        timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s"; if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TEMPORAL LOCKOUT"); }, 1000);
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "AI PROCESSING";
+        timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s"; if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TIME FORFEIT"); }, 1000);
     }
 
     function endGame(win, res) { gameActive = false; clearInterval(timerInterval); document.getElementById('victory-overlay').style.display = 'flex'; document.getElementById('winner-text').innerText = win + " VICTORIOUS"; document.getElementById('sub-winner-text').innerText = res; }
@@ -207,13 +207,15 @@
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
             let dr = myColor==='b' ? ROWS-1-r : r, dc = myColor==='b' ? COLS-1-c : c;
             const x = dc*CELL, y = dr*CELL;
-            ctx.fillStyle = (r+c)%2===0 ? "#e8e6e2" : "#7d8796"; ctx.fillRect(x,y,CELL,CELL);
-            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) { ctx.fillStyle = "rgba(255, 255, 0, 0.25)"; ctx.fillRect(x,y,CELL,CELL); }
-            if(selected && selected.r === r && selected.c === c) { ctx.fillStyle = "rgba(194, 161, 94, 0.5)"; ctx.fillRect(x,y,CELL,CELL); }
-            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle = "rgba(0,0,0,0.1)"; ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 6, 0, 7); ctx.fill(); }});
+            ctx.fillStyle = (r+c)%2===0 ? "#f0ead6" : "#4b3621"; ctx.fillRect(x,y,CELL,CELL);
+            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) { ctx.fillStyle = "rgba(212, 175, 55, 0.4)"; ctx.fillRect(x,y,CELL,CELL); }
+            if(selected && selected.r === r && selected.c === c) { ctx.fillStyle = "rgba(212, 175, 55, 0.6)"; ctx.fillRect(x,y,CELL,CELL); }
+            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle = "rgba(0,0,0,0.2)"; ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 6, 0, 7); ctx.fill(); }});
             if(board[r][c]) {
+                ctx.shadowBlur = 4; ctx.shadowColor = "rgba(0,0,0,0.4)";
                 ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#222";
-                ctx.font = "42px serif"; ctx.textAlign = "center"; ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+14);
+                ctx.font = "bold 44px serif"; ctx.textAlign = "center"; ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+14);
+                ctx.shadowBlur = 0;
             }
         }
         requestAnimationFrame(render);

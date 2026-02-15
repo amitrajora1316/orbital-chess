@@ -14,20 +14,19 @@
         .header h1 { font-size: 0.9rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 20px; }
 
         #players-container { flex-grow: 1; overflow-y: auto; background: #111; border-radius: 8px; padding: 10px; border: 1px solid #333; margin-bottom: 15px; }
-        .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #222; }
+        .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #222; font-size: 0.8rem; }
         
-        /* Timer & Info */
         #game-info { background: #25252b; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; display: none; border-left: 4px solid var(--accent); }
         #timer-box { font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
         .turn-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
 
         canvas { flex-grow: 1; cursor: crosshair; background: #000; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; }
+        .btn { background: var(--accent); color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
+        .btn:hover { opacity: 0.8; }
         
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .login-box { text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent); }
-        input { padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white; margin-bottom: 20px; text-align: center; }
-        
+        .login-box { text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent); box-shadow: 0 0 30px rgba(212,175,55,0.2); }
+        input { padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white; margin-bottom: 20px; text-align: center; outline: none; border: 1px solid #333; }
         .mode-select { display: flex; gap: 10px; justify-content: center; }
     </style>
 </head>
@@ -54,9 +53,9 @@
         </div>
 
         <div style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">ACTIVE COMMANDERS</div>
-        <div id="players-container">Join a lobby to see players...</div>
+        <div id="players-container">Connecting to relay...</div>
         
-        <button class="btn" style="background:none; border:1px solid #444; color:#666;" onclick="location.reload()">EXIT GAME</button>
+        <button class="btn" style="background:none; border:1px solid #444; color:#666; margin-top: auto;" onclick="location.reload()">EXIT TO LOBBY</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -65,6 +64,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
+    // --- 1. FIREBASE CONFIG ---
     const firebaseConfig = {
         apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
         authDomain: "orbitalarena.firebaseapp.com",
@@ -79,27 +79,26 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- STATE ---
+    // --- 2. GAME STATE ---
     const ROWS = 12, COLS = 16, CELL = 70;
-    let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = null;
-    let selected = null, validMoves = [];
-    let camX = 50, camY = -150, isPanning = false, lastMouse = {x:0, y:0};
-    let timerInterval, timeLeft = 60;
+    let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = null, isAI = false;
+    let selected = null, validMoves = [], timerInterval, timeLeft = 60;
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
 
+    // --- 3. LOBBY & JOIN LOGIC ---
     function joinArena(mode) {
-        // 1. Auto-nickname logic
         const inputName = document.getElementById('username-input').value.trim();
         myId = "id_" + Math.random().toString(36).substr(2, 5);
-        myName = inputName || "Guest_" + myId.split('_')[1];
+        myName = inputName || "Guest_" + myId.split('_')[1]; // Auto-Guest Name
         
         document.getElementById('login-overlay').style.display = 'none';
 
         if(mode === 'ai') {
+            isAI = true;
             startAIGame();
         } else {
             initMultiplayer();
@@ -111,25 +110,30 @@
         db.ref('players/' + myId).set({ name: myName, status: 'available' });
         db.ref('players/' + myId).onDisconnect().remove();
 
+        // Sync Lobby Players
         db.ref('players').on('value', snap => {
             const container = document.getElementById('players-container');
             container.innerHTML = "";
+            let count = 0;
             snap.forEach(child => {
                 if(child.key === myId) return;
+                count++;
                 const p = child.val();
                 const div = document.createElement('div');
                 div.className = 'player-card';
                 div.innerHTML = `<span>${p.name}</span> <button class="btn" onclick="challenge('${child.key}')">FIGHT</button>`;
                 container.appendChild(div);
             });
+            if(count === 0) container.innerHTML = "<div style='color:#444; text-align:center;'>No other commanders online...</div>";
         });
 
+        // Listen for Challenges (Acceptor becomes Black)
         db.ref('challenges/' + myId).on('value', snap => {
             const c = snap.val();
             if(c) {
-                if(confirm(c.fromName + " challenges you! (You will play BLACK)")) {
+                if(confirm(c.fromName + " challenges you! (Accepting makes you BLACK)")) {
                     db.ref('challenges/' + myId).remove();
-                    initGame(c.gameId, 'b', c.fromName); // Acceptor is Black
+                    initGame(c.gameId, 'b', c.fromName);
                 }
             }
         });
@@ -137,9 +141,9 @@
 
     function challenge(targetId) {
         const gid = "g_" + Date.now();
-        // Challenger is White
+        // Challenger becomes White
         db.ref('challenges/' + targetId).set({fromName: myName, gameId: gid});
-        initGame(gid, 'w', "Opponent"); 
+        initGame(gid, 'w', "Opponent");
     }
 
     function initGame(gid, col, opp) {
@@ -147,55 +151,50 @@
         document.getElementById('game-info').style.display = 'block';
         document.getElementById('opp-name').innerText = "VS " + opp;
 
-        if(col === 'w') {
+        if(!isAI && col === 'w') {
             const newBoard = Array(ROWS).fill().map(() => Array(COLS).fill(""));
             ["R","N","B","Q","K","B","N","R"].forEach((p, i) => {
                 newBoard[2][4+i] = "b"+p; newBoard[3][4+i] = "bP";
                 newBoard[9][4+i] = "w"+p; newBoard[8][4+i] = "wP";
             });
-            db.ref('games/'+gid).set({board: newBoard, turn: 'w', lastMoveTime: Date.now()});
+            db.ref('games/'+gid).set({board: newBoard, turn: 'w'});
         }
 
+        // Feature: Sync moves across boards
         db.ref('games/'+gid).on('value', snap => {
             const data = snap.val();
             if(data) { 
                 board = data.board; 
                 turn = data.turn; 
-                startTimer(); // Sidebar turn display and timer
+                resetTimer(); 
             }
         });
     }
 
-    function startTimer() {
+    function resetTimer() {
         clearInterval(timerInterval);
         timeLeft = 60;
         const turnText = document.getElementById('turn-text');
-        const timerBox = document.getElementById('timer-box');
-
-        if(turn === myColor) {
-            turnText.innerText = "YOUR TURN";
-            turnText.style.color = "var(--accent)";
-        } else {
-            turnText.innerText = "OPPONENT'S TURN";
-            turnText.style.color = "#888";
-        }
+        turnText.innerText = (turn === myColor) ? "YOUR TURN" : "THEIR TURN";
+        turnText.style.color = (turn === myColor) ? "var(--accent)" : "#888";
 
         timerInterval = setInterval(() => {
             timeLeft--;
-            timerBox.innerText = timeLeft + "s";
+            document.getElementById('timer-box').innerText = timeLeft + "s";
             if(timeLeft <= 0) clearInterval(timerInterval);
         }, 1000);
     }
 
-    // --- BOARD ENGINE & RENDERING ---
-    function getMoves(r, c) {
-        const p = board[r][c]; if(!p) return [];
+    // --- 4. ENGINE & AI ---
+    function getMoves(r, c, testBoard = board) {
+        const p = testBoard[r][c]; if(!p) return [];
         const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
         
         if(type==='P') {
-            let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c});
+            let nr = (r+fwd+ROWS)%ROWS; if(!testBoard[nr][c]) moves.push({r:nr, c});
             [-1, 1].forEach(dc => {
-                let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0]!==col) moves.push({r:nr, c:nc});
+                let nc = (c+dc+COLS)%COLS; 
+                if(testBoard[nr][nc] && testBoard[nr][nc][0]!==col) moves.push({r:nr, c:nc});
             });
         } else {
             const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
@@ -206,14 +205,50 @@
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
                     let nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
-                    if(board[nr][nc] && board[nr][nc][0]===col) break;
-                    moves.push({r:nr, c:nc}); if(board[nr][nc]) break;
+                    if(testBoard[nr][nc] && testBoard[nr][nc][0]===col) break;
+                    moves.push({r:nr, c:nc}); if(testBoard[nr][nc]) break;
                 }
             });
         }
         return moves;
     }
 
+    function startAIGame() {
+        myColor = 'w';
+        const newBoard = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+        ["R","N","B","Q","K","B","N","R"].forEach((p, i) => {
+            newBoard[2][4+i] = "b"+p; newBoard[3][4+i] = "bP";
+            newBoard[9][4+i] = "w"+p; newBoard[8][4+i] = "wP";
+        });
+        board = newBoard;
+        currentGameId = "local_ai";
+        document.getElementById('game-info').style.display = 'block';
+        document.getElementById('opp-name').innerText = "VS NEURAL_LINK (AI)";
+        resetTimer();
+    }
+
+    function makeAIMove() {
+        setTimeout(() => {
+            let allMoves = [];
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS; c++) {
+                    if(board[r][c] && board[r][c][0] === 'b') {
+                        let moves = getMoves(r, c);
+                        moves.forEach(m => allMoves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
+                    }
+                }
+            }
+            if(allMoves.length > 0) {
+                const move = allMoves[Math.floor(Math.random() * allMoves.length)];
+                board[move.tr][move.tc] = board[move.fr][move.fc];
+                board[move.fr][move.fc] = "";
+                turn = 'w';
+                resetTimer();
+            }
+        }, 1000);
+    }
+
+    // --- 5. RENDER & INPUT ---
     function render() {
         canvas.width = window.innerWidth - 320;
         canvas.height = window.innerHeight;
@@ -221,20 +256,23 @@
 
         for(let r=-1; r<=ROWS; r++) {
             for(let c=-1; c<=COLS; c++) {
-                const rr = (r % ROWS + ROWS) % ROWS;
-                const rc = (c % COLS + COLS) % COLS;
+                const rr = (r % ROWS + ROWS) % ROWS, rc = (c % COLS + COLS) % COLS;
                 const x = c * CELL + camX, y = r * CELL + camY;
+                
                 ctx.fillStyle = (rr + rc) % 2 === 0 ? "#e8d5b5" : "#8b6b4d";
                 ctx.fillRect(x, y, CELL, CELL);
+                
                 if(selected && selected.r === rr && selected.c === rc) {
                     ctx.fillStyle = "rgba(212,175,55,0.5)"; ctx.fillRect(x, y, CELL, CELL);
                 }
+                
                 validMoves.forEach(m => {
                     if(m.r === rr && m.c === rc) {
-                        ctx.fillStyle = "rgba(0,0,0,0.2)";
+                        ctx.fillStyle = "rgba(0,0,0,0.15)";
                         ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 8, 0, Math.PI*2); ctx.fill();
                     }
                 });
+
                 if(board[rr] && board[rr][rc]) {
                     ctx.fillStyle = board[rr][rc][0] === 'w' ? "#fff" : "#000";
                     ctx.font = "40px Arial"; ctx.textAlign = "center";
@@ -255,19 +293,19 @@
         if(move) {
             board[rr][rc] = board[selected.r][selected.c];
             board[selected.r][selected.c] = "";
-            db.ref('games/'+currentGameId).update({board, turn: turn==='w'?'b':'w', lastMoveTime: Date.now()});
+            const nextTurn = turn==='w'?'b':'w';
+            
+            if(isAI) {
+                turn = nextTurn; resetTimer(); makeAIMove();
+            } else {
+                db.ref('games/'+currentGameId).update({board, turn: nextTurn});
+            }
             selected = null; validMoves = [];
         } else if(board[rr][rc] && board[rr][rc][0] === turn) {
             selected = {r: rr, c: rc};
             validMoves = getMoves(rr, rc);
         }
     });
-
-    // Simple AI Placeholder logic
-    function startAIGame() {
-        initGame("ai_game", 'w', "CPU (Level 1)");
-        myColor = 'w';
-    }
 </script>
 </body>
 </html>

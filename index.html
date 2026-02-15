@@ -7,24 +7,29 @@
         :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
         body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
         
+        /* --- Sidebar & UI --- */
         #sidebar { 
-            width: 300px; background: var(--panel); display: flex; flex-direction: column; 
+            width: 320px; background: var(--panel); display: flex; flex-direction: column; 
             padding: 15px; border-right: 2px solid #2d2d35; box-shadow: 5px 0 25px rgba(0,0,0,0.5); 
         }
+        .header h1 { font-size: 0.9rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 10px; }
         
+        .nav-tabs { display: flex; gap: 5px; margin-bottom: 15px; }
+        .tab-btn { flex: 1; padding: 8px; font-size: 0.7rem; background: #25252b; border: 1px solid #333; color: #888; cursor: pointer; border-radius: 4px; }
+        .tab-btn.active { border-color: var(--accent); color: var(--accent); }
+
+        #tab-content { flex-grow: 1; overflow-y: auto; font-size: 0.8rem; color: #ccc; }
+        .hidden { display: none; }
+
         /* Lobby & Player List */
-        .header h1 { font-size: 0.9rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 15px; }
-        #players-container { height: 150px; overflow-y: auto; background: #111; border-radius: 8px; padding: 10px; border: 1px solid #333; }
-        .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.8rem; }
+        #players-container { height: 120px; overflow-y: auto; background: #111; border-radius: 8px; padding: 10px; border: 1px solid #333; margin-bottom: 15px; }
+        .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; margin-right: 5px; }
 
-        /* Chat System */
-        #chat-box { flex-grow: 1; display: flex; flex-direction: column; margin-top: 20px; background: #000; border-radius: 8px; border: 1px solid #333; overflow: hidden; }
-        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #ccc; }
-        .msg { margin-bottom: 5px; }
-        .msg-name { color: var(--accent); font-weight: bold; }
-        #chat-input-area { display: flex; border-top: 1px solid #333; }
-        #chat-input { background: transparent; border: none; color: white; padding: 10px; flex-grow: 1; font-size: 0.8rem; outline: none; }
+        /* Chat & Logs */
+        #chat-box { height: 200px; display: flex; flex-direction: column; background: #000; border-radius: 8px; border: 1px solid #333; overflow: hidden; margin-top: 10px;}
+        #chat-messages { flex-grow: 1; overflow-y: auto; padding: 10px; font-size: 0.75rem; }
+        #chat-input { background: transparent; border: none; color: white; padding: 10px; border-top: 1px solid #333; outline: none; font-size: 0.75rem; }
 
         /* Match Info */
         #game-info { background: #25252b; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 10px; display: none; border-left: 4px solid var(--accent); }
@@ -33,36 +38,64 @@
         .btn { background: var(--accent); color: #000; border: none; padding: 5px 10px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; }
         
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        
+        /* Rules Styling */
+        .rules-text b { color: var(--accent); }
+        .rules-text ul { padding-left: 15px; }
     </style>
 </head>
 <body>
 
     <div id="login-overlay">
         <div style="text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent);">
-            <h1 style="color:var(--accent); letter-spacing:5px;">VANGUARD ARENA</h1>
+            <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
             <input type="text" id="username-input" placeholder="Enter Nickname" style="padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white;"><br><br>
             <button class="btn" style="padding:12px 40px; font-size:1rem;" onclick="joinArena()">ENTER LOBBY</button>
         </div>
     </div>
 
     <div id="sidebar">
-        <div class="header"><h1>ARENA LOBBY</h1></div>
+        <div class="header"><h1>VANGUARD PRO</h1></div>
         
-        <div id="game-info">
-            <div id="opp-name">VS ---</div>
-            <div id="turn-display">YOUR TURN</div>
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('lobby')">LOBBY</button>
+            <button class="tab-btn" onclick="switchTab('rules')">RULES</button>
+            <button class="tab-btn" onclick="switchTab('about')">ABOUT</button>
         </div>
 
-        <div id="players-container"></div>
+        <div id="tab-content">
+            <div id="tab-lobby">
+                <div id="game-info">
+                    <div id="opp-name" style="font-size: 0.7rem; opacity: 0.6;">VS ---</div>
+                    <div id="turn-display" style="font-weight: bold; margin-top: 5px;">YOUR TURN</div>
+                </div>
+                <div id="players-container"></div>
+                <div id="chat-box">
+                    <div id="chat-messages"></div>
+                    <input type="text" id="chat-input" placeholder="Chat here...">
+                </div>
+            </div>
 
-        <div id="chat-box">
-            <div id="chat-messages"></div>
-            <div id="chat-input-area">
-                <input type="text" id="chat-input" placeholder="Press Enter to Chat...">
+            <div id="tab-rules" class="hidden rules-text">
+                <b>THE ORBITAL GRID</b>
+                <p>This is a 12x16 toroidal board. Pieces that cross the horizontal or vertical edges wrap around to the opposite side.</p>
+                <b>PIECE MOVEMENT:</b>
+                <ul>
+                    <li><b>Pawns:</b> Move toward the enemy rings.</li>
+                    <li><b>Knights:</b> Leap in 'L' shapes across the wrap.</li>
+                    <li><b>Sliding Pieces:</b> Rooks/Bishops/Queens slide infinitely until blocked.</li>
+                </ul>
+                <p>Capture the King to win.</p>
+            </div>
+
+            <div id="tab-about" class="hidden">
+                <p><b>Vanguard Pro v2.0</b></p>
+                <p>A strategic experimental chess variant designed for high-dimensional tactics. Built with Firebase Realtime Database for zero-latency move synchronization.</p>
+                <p>Developed for the Arena Pro Series.</p>
             </div>
         </div>
         
-        <button class="btn" style="margin-top:10px; background:none; border:1px solid #444; color:#666;" onclick="location.reload()">QUIT ARENA</button>
+        <button class="btn" style="margin-top:15px; background:none; border:1px solid #444; color:#666;" onclick="location.reload()">LEAVE ARENA</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -71,26 +104,38 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
-    // --- 1. CONFIGURATION (REPLACE WITH YOUR KEYS) ---
+    // --- 1. CONFIGURATION ---
     const firebaseConfig = {
-       apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
-  authDomain: "orbitalarena.firebaseapp.com",
-  projectId: "orbitalarena",
-  storageBucket: "orbitalarena.firebasestorage.app",
-  messagingSenderId: "265516321261",
-  appId: "1:265516321261:web:a964edf2ba882ceff27fe4",
-  measurementId: "G-X1Y7394GZQ"
+        apiKey: "AIzaSyCjEnUBeg91At1NpkjVXg8gyfEF6Pf24J0",
+        authDomain: "orbitalarena.firebaseapp.com",
+        projectId: "orbitalarena",
+        storageBucket: "orbitalarena.firebasestorage.app",
+        messagingSenderId: "265516321261",
+        appId: "1:265516321261:web:a964edf2ba882ceff27fe4",
+        measurementId: "G-X1Y7394GZQ"
     };
     
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    // --- 2. GLOBAL STATE ---
+    // --- 2. STATE ---
     const ROWS = 12, COLS = 16, CELL = 75;
     let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = null;
+    let selected = null, validMoves = [];
     let camX = 100, camY = -180, isPanning = false, lastMouse = {x:0, y:0};
+    const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
-    // --- 3. ARENA & CHAT LOGIC ---
+    // --- 3. NAVIGATION ---
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+        document.getElementById('tab-lobby').classList.add('hidden');
+        document.getElementById('tab-rules').classList.add('hidden');
+        document.getElementById('tab-about').classList.add('hidden');
+        document.getElementById('tab-' + tab).classList.remove('hidden');
+    }
+
+    // --- 4. ARENA & CHAT ---
     function joinArena() {
         myName = document.getElementById('username-input').value || "Guest" + Math.floor(Math.random()*1000);
         myId = "user_" + Math.random().toString(36).substr(2, 9);
@@ -102,25 +147,24 @@
 
         setupLobbyListeners();
         setupChat();
+        render();
     }
 
     function setupChat() {
-        const chatInput = document.getElementById('chat-input');
-        chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && chatInput.value.trim() !== "") {
-                db.ref('lobbyChat').push({ name: myName, text: chatInput.value });
-                chatInput.value = "";
+        const input = document.getElementById('chat-input');
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && input.value.trim()) {
+                db.ref('lobbyChat').push({ name: myName, text: input.value });
+                input.value = "";
             }
         });
-
-        db.ref('lobbyChat').limitToLast(20).on('child_added', (snap) => {
+        db.ref('lobbyChat').limitToLast(15).on('child_added', (snap) => {
             const data = snap.val();
-            const msgEl = document.createElement('div');
-            msgEl.className = 'msg';
-            msgEl.innerHTML = `<span class="msg-name">${data.name}:</span> ${data.text}`;
-            const container = document.getElementById('chat-messages');
-            container.appendChild(msgEl);
-            container.scrollTop = container.scrollHeight;
+            const msg = document.createElement('div');
+            msg.innerHTML = `<span style="color:var(--accent)">${data.name}:</span> ${data.text}`;
+            const box = document.getElementById('chat-messages');
+            box.appendChild(msg);
+            box.scrollTop = box.scrollHeight;
         });
     }
 
@@ -133,7 +177,7 @@
                 const p = child.val();
                 const card = document.createElement('div');
                 card.className = 'player-card';
-                card.innerHTML = `<span><span class="status-dot"></span>${p.name}</span>
+                card.innerHTML = `<span style="font-size:0.8rem;"><span class="status-dot"></span>${p.name}</span>
                                  <button class="btn" onclick="sendChallenge('${child.key}','${p.name}')">FIGHT</button>`;
                 container.appendChild(card);
             });
@@ -156,14 +200,14 @@
         initGame(gId, 'w', targetName);
     }
 
-    // --- 4. GAME SYNC ---
+    // --- 5. GAME LOGIC ---
     function initGame(gameId, color, oppName) {
         currentGameId = gameId;
         myColor = color;
+        switchTab('lobby');
         document.getElementById('game-info').style.display = 'block';
         document.getElementById('opp-name').innerText = "VS " + oppName;
         
-        // Initial setup only for challenger
         if(color === 'w') {
             board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
             const layout = ["R", "N", "B", "Q", "K", "B", "N", "R"];
@@ -171,22 +215,38 @@
                 board[2][4+i] = "b"+p; board[3][4+i] = "bP";
                 board[9][4+i] = "w"+p; board[8][4+i] = "wP";
             });
-            syncBoard();
+            db.ref('games/' + gameId).set({ board, turn: 'w' });
         }
 
         db.ref('games/' + gameId).on('value', (snap) => {
             const data = snap.val();
-            if(data) {
-                board = data.board;
-                turn = data.turn;
-                render();
-                updateMatchUI();
-            }
+            if(data) { board = data.board; turn = data.turn; updateMatchUI(); }
         });
     }
 
-    function syncBoard() {
-        db.ref('games/' + currentGameId).set({ board: board, turn: turn });
+    function getMoves(r, c) {
+        const p = board[r][c]; if(!p) return [];
+        const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
+        if(type==='P') {
+            let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c});
+            [-1, 1].forEach(dc => {
+                let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0]!==col) moves.push({r:nr, c:nc});
+            });
+        } else {
+            const dirs = (type==='N') ? [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]] :
+                         (type==='R') ? [[0,1],[0,-1],[1,0],[-1,0]] :
+                         (type==='B') ? [[1,1],[1,-1],[-1,1],[-1,-1]] :
+                         [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            const lim = (type==='K' || type==='N') ? 2 : 16;
+            dirs.forEach(([dr, dc]) => {
+                for(let i=1; i<lim; i++) {
+                    let nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
+                    if(board[nr][nc] && board[nr][nc][0]===col) break;
+                    moves.push({r:nr, c:nc}); if(board[nr][nc]) break;
+                }
+            });
+        }
+        return moves;
     }
 
     function updateMatchUI() {
@@ -195,8 +255,46 @@
         el.style.color = (turn === myColor) ? "var(--accent)" : "#555";
     }
 
-    // ... (Add your standard render(), getMoves(), and canvas mousedown listeners here)
-    // IMPORTANT: In mousedown, add: if(turn !== myColor) return;
+    function render() {
+        canvas.width = window.innerWidth - 320; canvas.height = window.innerHeight;
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        for(let r=-1; r<ROWS+1; r++) {
+            for(let c=-1; c<COLS+1; c++) {
+                let rr=(r%ROWS+ROWS)%ROWS, rc=(c%COLS+COLS)%COLS;
+                let x=c*CELL+camX, y=r*CELL+camY;
+                ctx.fillStyle = (rr+rc)%2===0 ? "#e8d5b5" : "#8b6b4d";
+                ctx.fillRect(x,y,CELL,CELL);
+                if(selected && selected.r===rr && selected.c===rc) { ctx.fillStyle="rgba(212,175,55,0.4)"; ctx.fillRect(x,y,CELL,CELL); }
+                validMoves.forEach(m => { if(m.r===rr && m.c===rc) { ctx.fillStyle="rgba(0,0,0,0.15)"; ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,8,0,Math.PI*2); ctx.fill(); } });
+                if(board[rr][rc]) {
+                    ctx.fillStyle=board[rr][rc][0]==='w'?'#fff':'#000'; ctx.font="45px serif"; ctx.textAlign="center";
+                    ctx.fillText(PIECES[board[rr][rc]], x+CELL/2, y+CELL/2+15);
+                }
+            }
+        }
+        requestAnimationFrame(render);
+    }
+
+    const ctx = canvas.getContext('2d');
+    canvas.addEventListener('mousedown', e => {
+        if(turn !== myColor) return;
+        let mx=e.offsetX-camX, my=e.offsetY-camY;
+        let c=Math.floor(mx/CELL), r=Math.floor(my/CELL), rr=(r%ROWS+ROWS)%ROWS, rc=(c%COLS+COLS)%COLS;
+        if(e.button===0) {
+            let m=validMoves.find(mv => mv.r===rr && mv.c===rc);
+            if(m) {
+                board[rr][rc]=board[selected.r][selected.c]; board[selected.r][selected.c]="";
+                const nextTurn = turn==='w'?'b':'w';
+                db.ref('games/' + currentGameId).update({ board, turn: nextTurn });
+                selected=null; validMoves=[];
+            } else if(board[rr][rc] && board[rr][rc][0]===turn) {
+                selected={r:rr, c:rc}; validMoves=getMoves(rr, rc);
+            }
+        } else { isPanning=true; lastMouse={x:e.clientX, y:e.clientY}; }
+    });
+    window.addEventListener('mousemove', e => { if(isPanning) { camX+=e.clientX-lastMouse.x; camY+=e.clientY-lastMouse.y; lastMouse={x:e.clientX, y:e.clientY}; } });
+    window.addEventListener('mouseup', () => isPanning=false);
+    window.oncontextmenu = (e) => e.preventDefault();
 </script>
 </body>
 </html>

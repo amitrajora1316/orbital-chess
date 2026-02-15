@@ -6,28 +6,18 @@
     <style>
         :root { --bg: #0d0d0f; --panel: #1a1a1e; --accent: #d4af37; --text: #ffffff; }
         body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', sans-serif; height: 100vh; overflow: hidden; }
-        
-        #sidebar { 
-            width: 320px; background: var(--panel); display: flex; flex-direction: column; 
-            padding: 15px; border-right: 2px solid #2d2d35; box-shadow: 5px 0 25px rgba(0,0,0,0.5); 
-        }
+        #sidebar { width: 320px; background: var(--panel); display: flex; flex-direction: column; padding: 15px; border-right: 2px solid #2d2d35; }
         .header h1 { font-size: 0.9rem; letter-spacing: 3px; color: var(--accent); text-align: center; margin-bottom: 20px; }
-
         #players-container { flex-grow: 1; overflow-y: auto; background: #111; border-radius: 8px; padding: 10px; border: 1px solid #333; margin-bottom: 15px; }
         .player-card { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 5px; border-bottom: 1px solid #222; font-size: 0.8rem; }
-        
         #game-info { background: #25252b; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 15px; display: none; border-left: 4px solid var(--accent); }
         #timer-box { font-size: 1.5rem; font-weight: bold; color: var(--accent); margin-top: 5px; }
         .turn-label { font-size: 0.7rem; color: #888; text-transform: uppercase; }
-
         canvas { flex-grow: 1; cursor: crosshair; background: #000; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; transition: 0.2s; }
-        .btn:hover { opacity: 0.8; }
-        
+        .btn { background: var(--accent); color: #000; border: none; padding: 8px 12px; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.7rem; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .login-box { text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent); box-shadow: 0 0 30px rgba(212,175,55,0.2); }
-        input { padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white; margin-bottom: 20px; text-align: center; outline: none; border: 1px solid #333; }
-        .mode-select { display: flex; gap: 10px; justify-content: center; }
+        .login-box { text-align:center; background:#1a1a1e; padding:40px; border-radius:15px; border:1px solid var(--accent); }
+        input { padding:12px; border-radius:5px; border:none; width:220px; background:#25252b; color:white; margin-bottom: 20px; text-align: center; }
     </style>
 </head>
 <body>
@@ -36,7 +26,7 @@
         <div class="login-box">
             <h1 style="color:var(--accent); letter-spacing:5px;">ORBITAL ARENA</h1>
             <input type="text" id="username-input" placeholder="Enter Nickname (Optional)">
-            <div class="mode-select">
+            <div style="display: flex; gap: 10px; justify-content: center;">
                 <button class="btn" onclick="joinArena('human')">MULTIPLAYER</button>
                 <button class="btn" style="background:#444; color:white;" onclick="joinArena('ai')">VS COMPUTER</button>
             </div>
@@ -45,17 +35,14 @@
 
     <div id="sidebar">
         <div class="header"><h1>VANGUARD PRO</h1></div>
-        
         <div id="game-info">
             <div id="opp-name" style="font-size: 0.7rem; opacity: 0.6;">VS ---</div>
             <div class="turn-label" id="turn-text">WAITING...</div>
             <div id="timer-box">60s</div>
         </div>
-
         <div style="font-size: 0.7rem; color: #666; margin-bottom: 5px;">ACTIVE COMMANDERS</div>
-        <div id="players-container">Connecting to relay...</div>
-        
-        <button class="btn" style="background:none; border:1px solid #444; color:#666; margin-top: auto;" onclick="location.reload()">EXIT TO LOBBY</button>
+        <div id="players-container">Connecting...</div>
+        <button class="btn" style="background:none; border:1px solid #444; color:#666; margin-top: auto;" onclick="location.reload()">EXIT</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>
@@ -73,19 +60,17 @@
         messagingSenderId: "265516321261",
         appId: "1:265516321261:web:a964edf2ba882ceff27fe4"
     };
-    
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
     const ROWS = 12, COLS = 16, CELL = 60;
-    let board = [], turn = 'w', myId, myName, currentGameId = null, myColor = 'w', isAI = false;
+    let board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+    let turn = 'w', myId, myName, currentGameId = null, myColor = 'w', isAI = false;
     let selected = null, validMoves = [], timerInterval, timeLeft = 60;
-    let offsetX = 0, offsetY = 0;
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
 
     function joinArena(mode) {
         const inputName = document.getElementById('username-input').value.trim();
@@ -95,7 +80,6 @@
 
         if(mode === 'ai') { isAI = true; startAIGame(); } 
         else { initMultiplayer(); }
-        
         requestAnimationFrame(render);
     }
 
@@ -115,10 +99,11 @@
             });
         });
 
+        // FIXED: Listener ensures accepting player is set to Black ('b')
         db.ref('challenges/' + myId).on('value', snap => {
             const c = snap.val();
             if(c) {
-                if(confirm(c.fromName + " challenges you! (You will be BLACK)")) {
+                if(confirm(c.fromName + " challenges you! (Accept to play as BLACK)")) {
                     db.ref('challenges/' + myId).remove();
                     initGame(c.gameId, 'b', c.fromName);
                 }
@@ -129,21 +114,21 @@
     function challenge(targetId) {
         const gid = "g_" + Date.now();
         db.ref('challenges/' + targetId).set({fromName: myName, gameId: gid});
-        initGame(gid, 'w', "Opponent");
+        initGame(gid, 'w', "Opponent"); // Challenger is always White
     }
 
     function initGame(gid, col, opp) {
-        currentGameId = gid; myColor = col;
+        currentGameId = gid; 
+        myColor = col; // 'w' for challenger, 'b' for acceptor
         document.getElementById('game-info').style.display = 'block';
         document.getElementById('opp-name').innerText = "VS " + opp;
 
         if(!isAI && col === 'w') {
-            const newBoard = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+            const nb = Array(ROWS).fill().map(() => Array(COLS).fill(""));
             ["R","N","B","Q","K","B","N","R"].forEach((p, i) => {
-                newBoard[2][4+i] = "b"+p; newBoard[3][4+i] = "bP";
-                newBoard[9][4+i] = "w"+p; newBoard[8][4+i] = "wP";
+                nb[2][4+i] = "b"+p; nb[3][4+i] = "bP"; nb[9][4+i] = "w"+p; nb[8][4+i] = "wP";
             });
-            db.ref('games/'+gid).set({board: newBoard, turn: 'w'});
+            db.ref('games/'+gid).set({board: nb, turn: 'w'});
         }
 
         db.ref('games/'+gid).on('value', snap => {
@@ -168,12 +153,12 @@
         canvas.height = window.innerHeight;
         ctx.fillStyle = "#000"; ctx.fillRect(0,0,canvas.width,canvas.height);
 
-        offsetX = (canvas.width - (COLS * CELL)) / 2;
-        offsetY = (canvas.height - (ROWS * CELL)) / 2;
+        const offsetX = (canvas.width - (COLS * CELL)) / 2;
+        const offsetY = (canvas.height - (ROWS * CELL)) / 2;
 
         for(let r=0; r<ROWS; r++) {
             for(let c=0; c<COLS; c++) {
-                // Perspective Logic: Flip coordinates for Black player
+                // PERSPECTIVE FIX: If I am black, invert the display rows and columns
                 let displayR = (myColor === 'b') ? (ROWS - 1 - r) : r;
                 let displayC = (myColor === 'b') ? (COLS - 1 - c) : c;
 
@@ -186,13 +171,6 @@
                 if(selected && selected.r === r && selected.c === c) {
                     ctx.fillStyle = "rgba(212,175,55,0.5)"; ctx.fillRect(x, y, CELL, CELL);
                 }
-                
-                validMoves.forEach(m => {
-                    if(m.r === r && m.c === c) {
-                        ctx.fillStyle = "rgba(0,0,0,0.15)";
-                        ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 6, 0, Math.PI*2); ctx.fill();
-                    }
-                });
 
                 if(board[r][c]) {
                     ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#000";
@@ -207,13 +185,10 @@
     canvas.addEventListener('mousedown', e => {
         if(turn !== myColor) return;
         const rect = canvas.getBoundingClientRect();
-        const mx = (e.clientX - rect.left) - offsetX;
-        const my = (e.clientY - rect.top) - offsetY;
-        
-        let c = Math.floor(mx/CELL);
-        let r = Math.floor(my/CELL);
+        let c = Math.floor((e.clientX - rect.left - (canvas.width - COLS*CELL)/2) / CELL);
+        let r = Math.floor((e.clientY - rect.top - (canvas.height - ROWS*CELL)/2) / CELL);
 
-        // Convert click screen coordinates back to board logic coordinates
+        // PERSPECTIVE CLICK FIX: Revert screen clicks back to board logic
         if(myColor === 'b') {
             r = ROWS - 1 - r;
             c = COLS - 1 - c;
@@ -225,9 +200,9 @@
         if(move) {
             board[r][c] = board[selected.r][selected.c];
             board[selected.r][selected.c] = "";
-            const nextTurn = turn === 'w' ? 'b' : 'w';
-            if(isAI) { turn = nextTurn; makeAIMove(); } 
-            else { db.ref('games/'+currentGameId).update({board, turn: nextTurn}); }
+            const nt = turn === 'w' ? 'b' : 'w';
+            if(isAI) { turn = nt; makeAIMove(); } 
+            else { db.ref('games/'+currentGameId).update({board, turn: nt}); }
             selected = null; validMoves = [];
         } else if(board[r][c] && board[r][c][0] === turn) {
             selected = {r, c};
@@ -235,7 +210,6 @@
         }
     });
 
-    // Basic AI & Engine logic remains the same...
     function getMoves(r, c) {
         const p = board[r][c]; if(!p) return [];
         const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
@@ -269,7 +243,7 @@
         });
         board = nb; turn = 'w';
         document.getElementById('game-info').style.display = 'block';
-        document.getElementById('opp-name').innerText = "VS AI_CORE";
+        document.getElementById('opp-name').innerText = "VS AI_BOT";
     }
 
     function makeAIMove() {

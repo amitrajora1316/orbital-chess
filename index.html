@@ -2,75 +2,121 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vanguard V9 | Sovereign Edition</title>
+    <title>Orbital Arena | Vanguard V3</title>
     <style>
         :root { 
-            --gold: #c5a059; --bg: #0d0d0e; 
-            --light: #d8d4ca; --dark: #2a1e16; 
+            --bg: #020204; 
+            --panel: #0a0a0f; 
+            --accent: #d4af37; 
+            --text: #ffffff; 
+            --tile-light: #161620; 
+            --tile-dark: #0d0d14;
+            --border: #2a2a35;
         }
-        body { background: var(--bg); color: #fff; margin: 0; display: flex; font-family: 'Garamond', serif; height: 100vh; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Segoe UI', Roboto, sans-serif; height: 100vh; overflow: hidden; }
         
-        /* Sidebar: High-End Minimalist */
-        #sidebar { width: 320px; background: #141416; display: flex; flex-direction: column; padding: 30px; border-right: 1px solid #222; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
-        .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--gold); text-align: center; text-transform: uppercase; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 20px;}
+        /* Sidebar Polish */
+        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 1px solid var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; text-transform: uppercase; }
         
-        #game-info { background: #000; padding: 30px; border-radius: 2px; text-align: center; margin-bottom: 30px; border: 1px solid #222; }
-        #timer-box { font-size: 3.5rem; font-weight: 100; color: #fff; font-family: 'Courier New', monospace; }
-        .status-label { font-size: 0.6rem; color: var(--gold); text-transform: uppercase; letter-spacing: 4px; margin-bottom: 10px; }
+        #game-info { background: #12121c; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid var(--border); margin-bottom: 20px; }
+        #timer-box { font-size: 2.5rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; text-shadow: 0 0 10px rgba(212,175,55,0.3); }
+        .turn-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
 
-        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a1c 0%, #050505 100%); }
-        canvas { box-shadow: 0 0 100px rgba(0,0,0,0.8); border: 15px solid #1a1a1a; cursor: crosshair; }
-        
-        .btn { background: var(--gold); color: #000; border: none; padding: 18px; font-weight: 900; cursor: pointer; text-transform: uppercase; width: 100%; transition: 0.3s; letter-spacing: 2px; }
-        .btn:hover { background: #fff; box-shadow: 0 0 20px rgba(197, 160, 89, 0.4); }
+        #rules-primer { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; font-size: 0.8rem; line-height: 1.6; color: #bbb; margin-bottom: 20px; border: 1px solid #222; }
+        #rules-primer b { color: var(--accent); }
 
-        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.98); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal { text-align:center; padding:60px; background: #141416; border: 1px solid var(--gold); width: 420px; box-shadow: 0 0 50px #000; }
+        #gallery { flex-grow: 1; border-top: 1px solid #222; padding-top: 20px; }
+        .gallery-label { font-size: 0.65rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase; opacity: 0.7; }
+        .captured-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; }
+        .captured-piece { font-size: 1.6rem; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2)); }
+
+        /* Canvas Area */
+        #canvas-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a2e 0%, #020204 100%); }
+        canvas { cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,1); border: 2px solid #222; }
+        
+        /* Buttons */
+        .btn { background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 4px; font-weight: 900; cursor: pointer; transition: all 0.2s; text-transform: uppercase; letter-spacing: 2px; }
+        .btn:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212,175,55,0.4); }
+
+        /* Overlays */
+        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(8px); }
+        .start-box { text-align:center; background:#0a0a0f; padding:60px; border: 1px solid var(--accent); border-radius: 4px; box-shadow: 0 0 50px rgba(212,175,55,0.15); }
+        
+        #check-alert { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); color: #ff3333; font-weight: 900; font-size: 4rem; letter-spacing: 20px; opacity: 0; pointer-events: none; transition: 0.4s; z-index: 5; text-shadow: 0 0 20px rgba(255,0,0,0.5); }
+        .show-check { opacity: 1 !important; transform: translateX(-50%) scale(1.1) !important; }
     </style>
 </head>
 <body>
+    <div id="check-alert">CHECK</div>
+    
     <div id="overlay">
-        <div class="modal">
-            <h1 style="color:var(--gold); letter-spacing:10px;">VANGUARD IX</h1>
-            <p style="color:#666; font-style: italic; margin-bottom:40px;">Sovereign Threaded Engine</p>
-            <div style="display:flex; gap:15px;">
+        <div class="start-box">
+            <h1 style="color:var(--accent); letter-spacing:10px; margin-bottom:10px;">VANGUARD : ORBITAL</h1>
+            <p style="color:#888; margin-bottom:40px;">TOROIDAL TOPOLOGY | 5s AI WINDOW</p>
+            <div style="display:flex; gap:20px;">
                 <button class="btn" onclick="startGame('w')">Command White</button>
-                <button class="btn" style="background:#333; color:#fff;" onclick="startGame('b')">Command Black</button>
+                <button class="btn" style="background:#eee;" onclick="startGame('b')">Command Black</button>
             </div>
         </div>
     </div>
 
     <div id="victory-overlay" style="display:none;">
-        <div class="modal"><h1 id="winner-text" style="color:var(--gold);">RESOLUTION</h1><p id="sub-text" style="color:#888; margin-bottom:30px;"></p><button class="btn" onclick="location.reload()">Re-Initialize</button></div>
+        <div class="start-box">
+            <h1 id="winner-text" style="color:var(--accent); letter-spacing:5px;">VICTORY</h1>
+            <p id="sub-winner-text" style="color:#888; margin-bottom:30px;">REASON</p>
+            <button class="btn" onclick="showChoiceMenu()">Re-Deploy Units</button>
+        </div>
     </div>
 
     <div id="sidebar">
-        <div class="header"><h1>Chronos System</h1></div>
+        <div class="header"><h1>VANGUARD V3.0</h1></div>
         <div id="game-info">
-            <div class="status-label" id="turn-text">System Idle</div>
-            <div id="timer-box">60.0</div>
+            <div class="turn-label" id="turn-text">OFFLINE</div>
+            <div id="timer-box">60s</div>
         </div>
-        <div style="flex-grow:1"></div>
-        <button class="btn" style="background:transparent; color:#444; border:1px solid #222;" onclick="location.reload()">Reset Arena</button>
+        <div id="rules-primer">
+            <b>Toroidal:</b> Infinite board. Wrap-around active.<br>
+            <b>Inertia:</b> Majors move <b>Forward Only</b> on turn 1.<br>
+            <b>Timing:</b> AI 5s / You 60s.
+        </div>
+        <div id="gallery">
+            <div class="gallery-label">AI Salvage</div>
+            <div id="captured-by-ai" class="captured-row"></div>
+            <div class="gallery-label">Your Salvage</div>
+            <div id="captured-by-player" class="captured-row"></div>
+        </div>
+        <button class="btn" onclick="showChoiceMenu()" style="background:transparent; color:#444; border:1px solid #222; font-size:0.7rem;">Emergency Abort</button>
     </div>
 
-    <div id="canvas-container"><canvas id="gameCanvas"></canvas></div>
+    <div id="canvas-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
 
 <script>
-    const ROWS = 12, COLS = 16, CELL = 66;
-    let board = [], hasMoved = [], turn = 'w', myColor = 'w', gameActive = false;
-    let selected = null, validMoves = [], lastMove = null, timeLeft = 60, timerInterval;
+    const ROWS = 12, COLS = 16, CELL = 65;
+    let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60;
+    let selected = null, validMoves = [], lastMove = null, gameActive = false;
 
+    const VALS = { 'P': 120, 'N': 500, 'B': 450, 'R': 700, 'Q': 1300, 'K': 60000 };
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
-    const VALS = { 'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 100000 };
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
+    function showChoiceMenu() {
+        gameActive = false; clearInterval(timerInterval);
+        document.getElementById('victory-overlay').style.display = 'none';
+        document.getElementById('overlay').style.display = 'flex';
+    }
+
     function startGame(side) {
         myColor = side; turn = 'w'; gameActive = true;
         document.getElementById('overlay').style.display = 'none';
-        initBoard(); startTimer(); if(turn !== myColor) aiThinkLoop();
+        document.getElementById('captured-by-ai').innerHTML = '';
+        document.getElementById('captured-by-player').innerHTML = '';
+        initBoard(); resetTimer();
+        if(turn !== myColor) aiMove();
         requestAnimationFrame(render);
     }
 
@@ -84,152 +130,155 @@
         });
     }
 
-    function getMoves(r, c, b = board) {
-        const p = b[r][c]; if(!p) return [];
-        const col = p[0], type = p[1], moves = [], fwd = col==='w'?-1:1;
+    function getMoves(r, c, targetB = board, hist = hasMoved) {
+        const piece = targetB[r][c]; if(!piece) return [];
+        const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1;
+        const first = !hist[r][c];
+
         if(type==='P') {
-            let nr = (r+fwd+ROWS)%ROWS; if(!b[nr][c]) moves.push({r:nr, c:c});
-            [-1, 1].forEach(dc => { let nc=(c+dc+COLS)%COLS; if(b[nr][nc] && b[nr][nc][0] !== col) moves.push({r:nr, c:nc}); });
+            let nr = (r+fwd+ROWS)%ROWS; 
+            if(!targetB[nr][c]) moves.push({r:nr, c:c});
+            [-1, 1].forEach(dc => {
+                let nc = (c+dc+COLS)%COLS;
+                if(targetB[nr][nc] && targetB[nr][nc][0] !== col) moves.push({r:nr, c:nc});
+            });
         } else {
             let dirs = (type==='N')?[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]:
                        (type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:
                        (type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:
                                     [[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            if (first && type !== 'K') dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
             const lim = (type==='K' || type==='N') ? 2 : 16;
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
-                    let nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
-                    if(b[nr][nc] && b[nr][nc][0] === col) break;
-                    moves.push({r:nr, c:nc}); if(b[nr][nc]) break;
+                    let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
+                    if(targetB[nr][nc] && targetB[nr][nc][0] === col) break;
+                    moves.push({r:nr, c:nc}); if(targetB[nr][nc]) break;
                 }
             });
         }
         return moves;
     }
 
-    // --- NON-BLOCKING AI ENGINE ---
-    async function aiThinkLoop() {
+    function aiMove() {
         if (!gameActive) return;
         const aiC = (myColor === 'w' ? 'b' : 'w');
-        let moves = [];
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
-            if(board[r][c] && board[r][c][0] === aiC) 
-                getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
+        const opp = myColor;
+        setTimeout(() => {
+            let bestM = null, bestS = -Infinity, moves = [];
+            let kP = null;
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === opp+'K') kP = {r,c};
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+                if(board[r][c] && board[r][c][0] === aiC) getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c, p:board[r][c]}));
 
-        // Move Ordering: Evaluate obvious captures first to prune faster
-        moves.sort((a,b) => (board[b.tr][b.tc] ? VALS[board[b.tr][b.tc][1]] : 0) - (board[a.tr][a.tc] ? VALS[board[a.tr][a.tc][1]] : 0));
-
-        let bestM = null, alpha = -Infinity, beta = Infinity, bestS = -Infinity;
-
-        for (let m of moves) {
-            const bS = board[m.fr][m.fc], bT = board[m.tr][m.tc];
-            board[m.tr][m.tc] = bS; board[m.fr][m.fc] = "";
-            
-            // Critical: Yield thread back to browser for 0ms to allow timer update
-            await new Promise(r => setTimeout(r, 0));
-            
-            let score = minimax(2, aiC === 'w' ? 'b' : 'w', alpha, beta, false);
-            
-            board[m.fr][m.fc] = bS; board[m.tr][m.tc] = bT;
-
-            if(score > bestS) { bestS = score; bestM = m; }
-            alpha = Math.max(alpha, bestS);
-            if(!gameActive) return;
-        }
-        if(bestM) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
-    }
-
-    function minimax(depth, color, alpha, beta, isMax) {
-        if(depth === 0) return evaluate();
-        let moves = [];
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
-            if(board[r][c] && board[r][c][0] === color) 
-                getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
-        
-        let bestScore = isMax ? -Infinity : Infinity;
-        for(let m of moves) {
-            const bS = board[m.fr][m.fc], bT = board[m.tr][m.tc];
-            board[m.tr][m.tc] = bS; board[m.fr][m.fc] = "";
-            let score = minimax(depth - 1, color === 'w' ? 'b' : 'w', alpha, beta, !isMax);
-            board[m.fr][m.fc] = bS; board[m.tr][m.tc] = bT;
-            if(isMax) { bestScore = Math.max(bestScore, score); alpha = Math.max(alpha, bestScore); }
-            else { bestScore = Math.min(bestScore, score); beta = Math.min(beta, bestScore); }
-            if(beta <= alpha) break;
-        }
-        return bestScore;
-    }
-
-    function evaluate() {
-        let s = 0; const aiC = (myColor === 'w' ? 'b' : 'w');
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
-            if(!board[r][c]) continue;
-            s += (board[r][c][0] === aiC ? VALS[board[r][c][1]] : -VALS[board[r][c][1]]);
-        }
-        return s;
+            moves.forEach(m => {
+                let s = Math.random() * 15;
+                const t = board[m.tr][m.tc];
+                if(t) s += VALS[t[1]] * 15;
+                if(!hasMoved[m.fr][m.fc] && m.p[1] !== 'P') s += 300; // Inertia reward
+                if(kP) {
+                    const rD = Math.min(Math.abs(m.tr - kP.r), ROWS - Math.abs(m.tr - kP.r));
+                    const cD = Math.min(Math.abs(m.tc - kP.c), COLS - Math.abs(m.tc - kP.c));
+                    s += (25 - (rD + cD)) * 10;
+                }
+                // Safety
+                const bS = board[m.fr][m.fc], bT = board[m.tr][m.tc];
+                board[m.tr][m.tc] = bS; board[m.fr][m.fc] = "";
+                let danger = 0;
+                for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++)
+                    if(board[r][c] && board[r][c][0] === opp)
+                        getMoves(r, c).forEach(om => { if(board[om.r][om.c] && board[om.r][om.c][0] === aiC) danger = Math.max(danger, VALS[board[om.r][om.c][1]]); });
+                s -= (danger * 2);
+                board[m.fr][m.fc] = bS; board[m.tr][m.tc] = bT;
+                if(s > bestS) { bestS = s; bestM = m; }
+            });
+            if(bestM && gameActive) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
+        }, 800);
     }
 
     function executeMove(fr, fc, tr, tc) {
+        if(!gameActive) return;
         let p = board[fr][fc]; const v = board[tr][tc];
-        if(v && v[1] === 'K') return endGame(p[0] === myColor ? "Commander" : "Vanguard", "Regicide");
+        if(v) {
+            const id = v[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
+            const span = document.createElement('span'); span.className = 'captured-piece'; span.innerText = PIECES[v];
+            span.style.color = v[0] === 'w' ? '#fff' : '#d4af37';
+            document.getElementById(id).appendChild(span);
+            if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
+        }
         if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
-        board[tr][tc] = p; board[fr][fc] = "";
+        board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
         lastMove = {fr, fc, tr, tc}; turn = (turn === 'w' ? 'b' : 'w');
-        startTimer(); if(gameActive && turn !== myColor) aiThinkLoop();
+        resetTimer(); checkState();
+        if(gameActive && turn !== myColor) aiMove();
     }
 
-    function startTimer() {
-        clearInterval(timerInterval); 
-        let start = Date.now();
-        let duration = (turn === myColor) ? 60000 : 5000;
-        document.getElementById('turn-text').innerText = (turn === myColor) ? "Awaiting Intel" : "Vanguard Processing";
+    function checkState() {
+        let k = null; const cur = turn;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === cur + 'K') k = {r,c};
+        const enemy = (cur==='w'?'b':'w');
+        let isCh = false;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+            if(board[r][c] && board[r][c][0] === enemy) {
+                if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
+            }
+        }
+        if(isCh) {
+            document.getElementById('check-alert').classList.add('show-check');
+            setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1200);
+        }
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval);
+        timeLeft = (turn === myColor) ? 60 : 5;
+        document.getElementById('timer-box').innerText = timeLeft + "s";
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "VANGUARD SCAN";
         timerInterval = setInterval(() => {
-            let diff = duration - (Date.now() - start);
-            timeLeft = Math.max(0, diff / 1000);
-            document.getElementById('timer-box').innerText = timeLeft.toFixed(1);
-            if(timeLeft <= 0) endGame((turn === myColor) ? "Vanguard" : "Commander", "Time Out");
-        }, 50);
+            timeLeft--; document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s";
+            if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TEMPORAL LOCKOUT");
+        }, 1000);
     }
 
-    function endGame(win, reason) { 
-        gameActive = false; clearInterval(timerInterval); 
-        document.getElementById('victory-overlay').style.display = 'flex'; 
-        document.getElementById('winner-text').innerText = win.toUpperCase() + " VICTORIOUS";
-        document.getElementById('sub-text').innerText = reason;
+    function endGame(win, res) {
+        gameActive = false; clearInterval(timerInterval);
+        document.getElementById('victory-overlay').style.display = 'flex';
+        document.getElementById('winner-text').innerText = win === "PLAYER" ? "ARENA SECURED" : "AI DOMINANCE";
+        document.getElementById('sub-winner-text').innerText = res;
     }
 
     function render() {
         canvas.width = COLS * CELL; canvas.height = ROWS * CELL;
-        ctx.fillStyle = "#1a1a1a"; ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.clearRect(0,0,canvas.width,canvas.height);
         for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
             let dr = myColor==='b' ? ROWS-1-r : r, dc = myColor==='b' ? COLS-1-c : c;
             const x = dc*CELL, y = dr*CELL;
-            ctx.fillStyle = (r+c)%2===0 ? "#d8d4ca" : "#2a1e16";
+            ctx.fillStyle = (r+c)%2===0 ? "#1a1a24" : "#0d0d14";
             ctx.fillRect(x,y,CELL,CELL);
-            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) {
-                ctx.fillStyle = "rgba(197, 160, 89, 0.4)"; ctx.fillRect(x,y,CELL,CELL);
-            }
-            if(selected && selected.r === r && selected.c === c) {
-                ctx.fillStyle = "rgba(255, 255, 255, 0.3)"; ctx.fillRect(x,y,CELL,CELL);
-            }
+            ctx.strokeStyle = "#252530"; ctx.strokeRect(x,y,CELL,CELL);
+            if(lastMove && ((lastMove.fr===r && lastMove.fc===c) || (lastMove.tr===r && lastMove.tc===c))) { ctx.fillStyle = "rgba(212,175,55,0.15)"; ctx.fillRect(x,y,CELL,CELL); }
+            if(selected && selected.r === r && selected.c === c) { ctx.fillStyle = "rgba(212,175,55,0.3)"; ctx.fillRect(x,y,CELL,CELL); }
+            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 5, 0, 7); ctx.fill(); }});
             if(board[r][c]) {
-                ctx.shadowBlur = 4; ctx.shadowColor = "rgba(0,0,0,0.5)";
-                ctx.fillStyle = board[r][c][0] === 'w' ? "#ffffff" : "#000000";
-                ctx.font = "46px serif"; ctx.textAlign = "center"; 
-                ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+16);
+                ctx.shadowBlur = 10; ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.fillStyle = board[r][c][0] === 'w' ? "#ffffff" : "#d4af37";
+                ctx.font = "bold 38px serif"; ctx.textAlign = "center";
+                ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+13);
                 ctx.shadowBlur = 0;
             }
         }
-        if(gameActive) requestAnimationFrame(render);
+        requestAnimationFrame(render);
     }
 
     canvas.addEventListener('mousedown', e => {
         if(!gameActive || turn !== myColor) return;
         const rect = canvas.getBoundingClientRect();
-        let c = Math.floor((e.clientX - rect.left) / (rect.width / COLS)), r = Math.floor((e.clientY - rect.top) / (rect.height / ROWS));
+        let c = Math.floor((e.clientX - rect.left) / (rect.width / COLS));
+        let r = Math.floor((e.clientY - rect.top) / (rect.height / ROWS));
         if(myColor === 'b') { r = ROWS-1-r; c = COLS-1-c; }
-        const move = getMoves(selected?.r, selected?.c).find(m => m.r === r && m.c === c);
-        if(move) { executeMove(selected.r, selected.c, r, c); selected = null; }
-        else if(board[r][c] && board[r][c][0] === myColor) { selected = {r, c}; }
+        const move = validMoves.find(m => m.r === r && m.c === c);
+        if(move) { executeMove(selected.r, selected.c, r, c); selected = null; validMoves = []; }
+        else if(board[r][c] && board[r][c][0] === myColor) { selected = {r, c}; validMoves = getMoves(r, c); }
     });
 </script>
 </body>

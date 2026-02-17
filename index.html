@@ -2,113 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Vanguard V3 | Royal Study</title>
+    <title>Orbital Arena | Vanguard V3</title>
     <style>
         :root { 
-            --bg: #120a07; 
-            --panel: #1e120c; 
-            --accent: #d4af37; 
+            --bg: #1a0f0a; 
+            --panel: #2d1b14; 
+            --accent: #d4af37; /* Gold leaf */
             --text: #f5e6d3; 
-            --tile-light: #d4b483; /* Polished Oak */
-            --tile-dark: #4e2a1e;  /* Deep Mahogany */
-            --border: #2d1b14;
+            --tile-light: #e8dcc4; /* Polished Oak */
+            --tile-dark: #4e342e;  /* Deep Mahogany */
+            --border: #3e2723;
         }
 
-        body { 
-            background: var(--bg); color: var(--text); margin: 0; 
-            display: flex; font-family: 'Georgia', serif; height: 100vh; 
-            overflow: hidden; align-items: flex-start; 
-        }
+        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Georgia', serif; height: 100vh; overflow: hidden; }
         
-        #sidebar { 
-            width: 340px; height: 100vh; background: var(--panel); 
-            display: flex; flex-direction: column; padding: 25px; 
-            border-right: 4px ridge var(--border); box-sizing: border-box; 
-        }
-
-        .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 20px; border-bottom: 1px solid var(--accent); padding-bottom: 15px; text-transform: uppercase; }
+        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 4px ridge var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 25px; border-bottom: 1px solid var(--accent); padding-bottom: 15px; text-transform: uppercase; }
+        
+        #game-info { background: #3e2723; padding: 20px; border-radius: 4px; text-align: center; border: 2px inset var(--border); margin-bottom: 20px; }
+        #timer-box { font-size: 2.5rem; font-weight: 900; color: var(--accent); font-family: 'Courier New', monospace; }
+        .turn-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
 
         #move-log { 
-            flex-grow: 1; background: rgba(0,0,0,0.3); 
-            border: 1px solid var(--border); border-radius: 4px; 
-            padding: 10px; overflow-y: auto; font-family: monospace; 
-            font-size: 0.8rem; margin: 15px 0; color: #aaa;
+            height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); 
+            border: 1px solid var(--border); padding: 10px; font-family: monospace; 
+            font-size: 0.75rem; margin-bottom: 20px; border-radius: 4px; color: #ccc;
         }
 
-        #game-info { background: #2d1b14; padding: 15px; border-radius: 4px; text-align: center; border: 2px inset var(--border); }
-        #timer-box { font-size: 2.2rem; color: var(--accent); font-family: 'Courier New', monospace; font-weight: bold; }
+        #gallery { flex-grow: 1; border-top: 1px solid var(--border); padding-top: 20px; }
+        .gallery-label { font-size: 0.65rem; color: var(--accent); letter-spacing: 2px; margin-bottom: 12px; text-transform: uppercase; }
+        .captured-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; }
+        .captured-piece { font-size: 1.6rem; }
 
-        #canvas-container { 
-            flex-grow: 1; height: 100vh; display: flex; 
-            justify-content: center; align-items: flex-start;
-            padding-top: 25px; 
-            background: radial-gradient(circle, #2d1b14 0%, #120a07 100%);
-        }
-
-        canvas { border: 12px solid #2d1b14; box-shadow: 0 10px 50px rgba(0,0,0,0.8); cursor: pointer; }
-        .btn { background: var(--accent); color: #000; border: none; padding: 12px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+        #canvas-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #3e2723 0%, #1a0f0a 100%); }
+        canvas { cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,1); border: 10px solid #2d1b14; }
+        
+        .btn { background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+        #overlay, #victory-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); display: flex; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(8px); }
+        .start-box { text-align:center; background:#0a0a0f; padding:60px; border: 1px solid var(--accent); border-radius: 4px; }
+        #check-alert { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); color: #ff3333; font-weight: 900; font-size: 4rem; opacity: 0; pointer-events: none; transition: 0.4s; z-index: 5; }
+        .show-check { opacity: 1 !important; transform: translateX(-50%) scale(1.1) !important; }
     </style>
 </head>
 <body>
+    <div id="check-alert">CHECK</div>
+    <div id="overlay"><div class="start-box"><h1 style="color:var(--accent); letter-spacing:10px;">VANGUARD : ORBITAL</h1><div style="display:flex; gap:20px; justify-content:center; margin-top:40px;"><button class="btn" onclick="startGame('w')">White</button><button class="btn" style="background:#eee;" onclick="startGame('b')">Black</button></div></div></div>
+    <div id="victory-overlay" style="display:none;"><div class="start-box"><h1 id="winner-text" style="color:var(--accent);">VICTORY</h1><p id="sub-winner-text" style="color:#888;"></p><button class="btn" onclick="showChoiceMenu()">Re-Deploy</button></div></div>
+
     <div id="sidebar">
         <div class="header"><h1>VANGUARD V3.0</h1></div>
-        <div id="game-info">
-            <div id="turn-text" style="font-size:0.7rem; color:#888;">OFFLINE</div>
-            <div id="timer-box">60s</div>
-        </div>
+        <div id="game-info"><div class="turn-label" id="turn-text">OFFLINE</div><div id="timer-box">60s</div></div>
+        <div class="gallery-label">Tactical Log</div>
         <div id="move-log"><div>Waiting for deployment...</div></div>
-        <button class="btn" onclick="location.reload()">RESET ARENA</button>
+        <div id="gallery">
+            <div class="gallery-label">AI Salvage</div><div id="captured-by-ai" class="captured-row"></div>
+            <div class="gallery-label">Your Salvage</div><div id="captured-by-player" class="captured-row"></div>
+        </div>
+        <button class="btn" onclick="showChoiceMenu()" style="background:transparent; color:#888; border:1px solid #444; font-size:0.7rem;">Abort</button>
     </div>
 
     <div id="canvas-container"><canvas id="gameCanvas"></canvas></div>
 
 <script>
+    const ROWS = 12, COLS = 16, CELL = 65;
+    let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60, selected = null, validMoves = [], lastMove = null, gameActive = false;
+    const VALS = { 'P': 120, 'N': 500, 'B': 450, 'R': 700, 'Q': 1300, 'K': 60000 };
+    const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
+    const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
+
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playWoodThud() {
-        const now = audioCtx.currentTime;
-        
-        // The "Click" (High frequency contact)
-        const click = audioCtx.createOscillator();
-        const clickGain = audioCtx.createGain();
-        click.type = 'sine';
-        click.frequency.setValueAtTime(800, now);
-        clickGain.gain.setValueAtTime(0.2, now);
-        clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-        
-        // The "Thud" (Low frequency board resonance)
-        const thud = audioCtx.createOscillator();
-        const thudGain = audioCtx.createGain();
-        thud.type = 'triangle';
-        thud.frequency.setValueAtTime(120, now);
-        thud.frequency.exponentialRampToValueAtTime(60, now + 0.1);
-        thudGain.gain.setValueAtTime(0.4, now);
-        thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-
-        click.connect(clickGain); clickGain.connect(audioCtx.destination);
-        thud.connect(thudGain); thudGain.connect(audioCtx.destination);
-        
-        click.start(now); click.stop(now + 0.05);
-        thud.start(now); thud.stop(now + 0.15);
+    function playThud() {
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
     }
 
-    const ROWS = 12, COLS = 16, CELL = 65;
-    let board = [], turn = 'w';
-    const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
-
-    function logMove(piece, fr, fc, tr, tc) {
+    function addLogEntry(piece, fr, fc, tr, tc) {
         const log = document.getElementById('move-log');
         if (log.innerText.includes('Waiting')) log.innerHTML = '';
         const cols = "abcdefghijklmnop";
         const entry = document.createElement('div');
-        entry.style.padding = "4px 0";
-        entry.style.borderBottom = "1px solid #2d1b14";
+        entry.style.borderBottom = '1px solid #3e2723';
         entry.innerHTML = `<span style="color:${piece[0]==='w'?'#fff':'var(--accent)'}">${PIECES[piece]}</span> ${cols[fc]}${ROWS-fr} → ${cols[tc]}${ROWS-tr}`;
         log.prepend(entry);
     }
 
+    function startGame(side) {
+        myColor = side; turn = 'w'; gameActive = true;
+        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('captured-by-ai').innerHTML = '';
+        document.getElementById('captured-by-player').innerHTML = '';
+        document.getElementById('move-log').innerHTML = '';
+        initBoard(); resetTimer();
+        if(turn !== myColor) aiMove();
+        requestAnimationFrame(render);
+    }
+
     function initBoard() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
+        hasMoved = Array(ROWS).fill().map(() => Array(COLS).fill(false));
         const layout = ["R","N","B","Q","K","B","N","R"];
         layout.forEach((p, i) => {
             board[2][4+i] = "b"+p; board[3][4+i] = "bP";
@@ -116,44 +112,119 @@
         });
     }
 
-    function executeMove(fr, fc, tr, tc) {
-        const piece = board[fr][fc];
-        logMove(piece, fr, fc, tr, tc);
-        playWoodThud();
-        board[tr][tc] = piece;
-        board[fr][fc] = "";
-        turn = (turn === 'w' ? 'b' : 'w');
-        render();
+    function getMoves(r, c) {
+        const piece = board[r][c]; if(!piece) return [];
+        const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1, first = !hasMoved[r][c];
+        if(type==='P') {
+            let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c:c});
+            [-1, 1].forEach(dc => { let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0] !== col) moves.push({r:nr, c:nc}); });
+        } else {
+            let dirs = (type==='N')?[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]:(type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:(type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            if (first && type !== 'K') dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
+            const lim = (type==='K' || type==='N') ? 2 : 16;
+            dirs.forEach(([dr, dc]) => {
+                for(let i=1; i<lim; i++) {
+                    let nr = (r + dr*i + ROWS) % ROWS, nc = (c + dc*i + COLS) % COLS;
+                    if(board[nr][nc] && board[nr][nc][0] === col) break;
+                    moves.push({r:nr, c:nc}); if(board[nr][nc]) break;
+                }
+            });
+        }
+        return moves;
     }
+
+    function executeMove(fr, fc, tr, tc) {
+        if(!gameActive) return;
+        let p = board[fr][fc]; const v = board[tr][tc];
+        addLogEntry(p, fr, fc, tr, tc); playThud();
+        if(v) {
+            const span = document.createElement('span'); span.className = 'captured-piece'; span.innerText = PIECES[v];
+            span.style.color = v[0] === 'w' ? '#fff' : '#d4af37';
+            document.getElementById(v[0]===myColor?'captured-by-ai':'captured-by-player').appendChild(span);
+            if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
+        }
+        if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
+        board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
+        lastMove = {fr, fc, tr, tc}; turn = (turn === 'w' ? 'b' : 'w');
+        resetTimer(); checkState();
+        if(gameActive && turn !== myColor) aiMove();
+    }
+
+    function aiMove() {
+        if (!gameActive) return;
+        const aiC = (myColor === 'w' ? 'b' : 'w'), opp = myColor;
+        setTimeout(() => {
+            let bestM = null, bestS = -Infinity, moves = [], kP = null;
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === opp+'K') kP = {r,c};
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] && board[r][c][0] === aiC) getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c, p:board[r][c]}));
+            moves.forEach(m => {
+                let s = Math.random() * 15; const t = board[m.tr][m.tc];
+                if(t) s += VALS[t[1]] * 15;
+                if(kP) s += (25 - (Math.min(Math.abs(m.tr - kP.r), ROWS - Math.abs(m.tr - kP.r)) + Math.min(Math.abs(m.tc - kP.c), COLS - Math.abs(m.tc - kP.c)))) * 10;
+                if(s > bestS) { bestS = s; bestM = m; }
+            });
+            if(bestM && gameActive) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
+        }, 800);
+    }
+
+    function checkState() {
+        let k = null; for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === turn + 'K') k = {r,c};
+        const enemy = (turn==='w'?'b':'w'); let isCh = false;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] && board[r][c][0] === enemy) if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
+        if(isCh) { document.getElementById('check-alert').classList.add('show-check'); setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1200); }
+    }
+
+    function resetTimer() {
+        clearInterval(timerInterval); timeLeft = (turn === myColor) ? 60 : 5;
+        document.getElementById('timer-box').innerText = timeLeft + "s";
+        document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "AI SCANNING";
+        timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s"; if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TEMPORAL LOCKOUT"); }, 1000);
+    }
+
+    function endGame(win, res) { gameActive = false; clearInterval(timerInterval); document.getElementById('victory-overlay').style.display = 'flex'; document.getElementById('winner-text').innerText = win === "PLAYER" ? "SECURED" : "LOST"; document.getElementById('sub-winner-text').innerText = res; }
 
     function render() {
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
         canvas.width = COLS * CELL; canvas.height = ROWS * CELL;
-
-        for(let r=0; r<ROWS; r++) {
-            for(let c=0; c<COLS; c++) {
-                ctx.fillStyle = (r+c)%2===0 ? "#d4b483" : "#4e2a1e";
-                ctx.fillRect(c*CELL, r*CELL, CELL, CELL);
-                if(board[r][c]) {
-                    ctx.fillStyle = board[r][c][0] === 'w' ? "#fff" : "#d4af37";
-                    ctx.font = "42px serif"; ctx.textAlign = "center";
-                    ctx.fillText(PIECES[board[r][c]], c*CELL + CELL/2, r*CELL + CELL/2 + 15);
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+            let dr = myColor==='b' ? ROWS-1-r : r, dc = myColor==='b' ? COLS-1-c : c;
+            ctx.fillStyle = (r+c)%2===0 ? "#e8dcc4" : "#4e342e";
+            ctx.fillRect(dc*CELL, dr*CELL, CELL, CELL);
+            if(selected?.r===r && selected?.c===c) { ctx.fillStyle = "rgba(212,175,55,0.4)"; ctx.fillRect(dc*CELL, dr*CELL, CELL, CELL); }
+            validMoves.forEach(m => { if(m.r===r && m.c===c) { ctx.fillStyle = "rgba(255,255,255,0.4)"; ctx.beginPath(); ctx.arc(dc*CELL+CELL/2, dr*CELL+CELL/2, 6, 0, 7); ctx.fill(); }});
+            if(board[r][c]) {
+                const isBlack = board[r][c][0] === 'b';
+                ctx.fillStyle = isBlack ? "#d4af37" : "#fff";
+                ctx.font = "bold 38px serif"; ctx.textAlign = "center";
+                
+                // VISIBILITY FIX: Add a dark shadow/outline to gold pieces on light squares
+                if(isBlack) {
+                    ctx.shadowColor = "rgba(0,0,0,0.8)";
+                    ctx.shadowBlur = 4;
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                    ctx.strokeText(PIECES[board[r][c]], dc*CELL+CELL/2, dr*CELL+CELL/2+13);
                 }
+                
+                ctx.fillText(PIECES[board[r][c]], dc*CELL+CELL/2, dr*CELL+CELL/2+13);
+                
+                // Reset shadow after drawing
+                ctx.shadowBlur = 0;
             }
         }
+        if(gameActive) requestAnimationFrame(render);
     }
 
-    initBoard();
-    render();
-
-    const canvas = document.getElementById('gameCanvas');
     canvas.addEventListener('mousedown', e => {
+        if(!gameActive || turn !== myColor) return;
         const rect = canvas.getBoundingClientRect();
-        const c = Math.floor((e.clientX - rect.left) / CELL);
-        const r = Math.floor((e.clientY - rect.top) / CELL);
-        if(board[r][c]) executeMove(r, c, r-1, c);
+        let c = Math.floor((e.clientX - rect.left) / (rect.width / COLS)), r = Math.floor((e.clientY - rect.top) / (rect.height / ROWS));
+        if(myColor === 'b') { r = ROWS-1-r; c = COLS-1-c; }
+        const move = validMoves.find(m => m.r === r && m.c === c);
+        if(move) { executeMove(selected.r, selected.c, r, c); selected = null; validMoves = []; }
+        else if(board[r][c] && board[r][c][0] === myColor) { selected = {r, c}; validMoves = getMoves(r, c); }
     });
+
+    function showChoiceMenu() { location.reload(); }
 </script>
 </body>
 </html>

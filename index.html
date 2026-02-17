@@ -14,9 +14,9 @@
             --border: #3e2723;
         }
 
-        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Georgia', serif; height: 100vh; overflow: hidden; align-items: flex-start; }
+        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Georgia', serif; height: 100vh; overflow: hidden; }
         
-        #sidebar { width: 340px; height: 100vh; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 4px ridge var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 4px ridge var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
         .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 25px; border-bottom: 1px solid var(--accent); padding-bottom: 15px; text-transform: uppercase; }
         
         #game-info { background: #3e2723; padding: 20px; border-radius: 4px; text-align: center; border: 2px inset var(--border); margin-bottom: 20px; }
@@ -34,7 +34,7 @@
         .captured-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; }
         .captured-piece { font-size: 1.6rem; }
 
-        #canvas-container { flex-grow: 1; height: 100vh; position: relative; display: flex; justify-content: center; align-items: flex-start; padding-top: 25px; background: radial-gradient(circle, #3e2723 0%, #1a0f0a 100%); }
+        #canvas-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #3e2723 0%, #1a0f0a 100%); }
         canvas { cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,1); border: 10px solid #2d1b14; }
         
         .btn { background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
@@ -65,25 +65,23 @@
 
 <script>
     const ROWS = 12, COLS = 16, CELL = 65;
-    let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60, selected = null, validMoves = [], lastMove = null, gameActive = false;
+    let board = [], hasMoved = [], turn = 'w', myColor = 'w', timerInterval, timeLeft = 60, selected = null, validMoves = [], gameActive = false;
     const VALS = { 'P': 120, 'N': 500, 'B': 450, 'R': 700, 'Q': 1300, 'K': 60000 };
     const PIECES = {'wK':'♔','wQ':'♕','wR':'♖','wB':'♗','wN':'♘','wP':'♙','bK':'♚','bQ':'♛','bR':'♜','bB':'♝','bN':'♞','bP':'♟'};
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
     function playWoodThud() {
         const now = audioCtx.currentTime;
-        const click = audioCtx.createOscillator(), clickGain = audioCtx.createGain();
+        const click = audioCtx.createOscillator(), cg = audioCtx.createGain();
         click.type = 'sine'; click.frequency.setValueAtTime(800, now);
-        clickGain.gain.setValueAtTime(0.1, now); clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
-        const thud = audioCtx.createOscillator(), thudGain = audioCtx.createGain();
+        cg.gain.setValueAtTime(0.1, now); cg.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        const thud = audioCtx.createOscillator(), tg = audioCtx.createGain();
         thud.type = 'triangle'; thud.frequency.setValueAtTime(120, now);
-        thud.frequency.exponentialRampToValueAtTime(60, now + 0.1);
-        thudGain.gain.setValueAtTime(0.3, now); thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        click.connect(clickGain); clickGain.connect(audioCtx.destination);
-        thud.connect(thudGain); thudGain.connect(audioCtx.destination);
-        click.start(now); click.stop(now + 0.05); thud.start(now); thud.stop(now + 0.15);
+        tg.gain.setValueAtTime(0.3, now); tg.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        click.connect(cg); cg.connect(audioCtx.destination);
+        thud.connect(tg); tg.connect(audioCtx.destination);
+        click.start(); click.stop(now + 0.05); thud.start(); thud.stop(now + 0.15);
     }
 
     function addLogEntry(piece, fr, fc, tr, tc) {
@@ -92,7 +90,6 @@
         const cols = "abcdefghijklmnop";
         const entry = document.createElement('div');
         entry.style.borderBottom = '1px solid #3e2723';
-        entry.style.padding = '2px 0';
         entry.innerHTML = `<span style="color:${piece[0]==='w'?'#fff':'var(--accent)'}">${PIECES[piece]}</span> ${cols[fc]}${ROWS-fr} → ${cols[tc]}${ROWS-tr}`;
         log.prepend(entry);
     }
@@ -100,9 +97,6 @@
     function startGame(side) {
         myColor = side; turn = 'w'; gameActive = true;
         document.getElementById('overlay').style.display = 'none';
-        document.getElementById('captured-by-ai').innerHTML = '';
-        document.getElementById('captured-by-player').innerHTML = '';
-        document.getElementById('move-log').innerHTML = '';
         initBoard(); resetTimer();
         if(turn !== myColor) aiMove();
         requestAnimationFrame(render);
@@ -120,13 +114,12 @@
 
     function getMoves(r, c) {
         const piece = board[r][c]; if(!piece) return [];
-        const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1, first = !hasMoved[r][c];
+        const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1;
         if(type==='P') {
             let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c:c});
             [-1, 1].forEach(dc => { let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0] !== col) moves.push({r:nr, c:nc}); });
         } else {
             let dirs = (type==='N')?[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]:(type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:(type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
-            if (first && type !== 'K') dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
             const lim = (type==='K' || type==='N') ? 2 : 16;
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
@@ -151,32 +144,34 @@
         }
         if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
         board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
-        lastMove = {fr, fc, tr, tc}; turn = (turn === 'w' ? 'b' : 'w');
+        turn = (turn === 'w' ? 'b' : 'w');
         resetTimer(); checkState();
         if(gameActive && turn !== myColor) aiMove();
     }
 
     function aiMove() {
         if (!gameActive) return;
-        const aiC = (myColor === 'w' ? 'b' : 'w'), opp = myColor;
+        const aiC = (myColor === 'w' ? 'b' : 'w');
         setTimeout(() => {
-            let bestM = null, bestS = -Infinity, moves = [], kP = null;
-            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === opp+'K') kP = {r,c};
-            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] && board[r][c][0] === aiC) getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c, p:board[r][c]}));
+            let bestM = null, bestS = -Infinity, moves = [];
+            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+                if(board[r][c] && board[r][c][0] === aiC) 
+                    getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
             moves.forEach(m => {
-                let s = Math.random() * 15; const t = board[m.tr][m.tc];
-                if(t) s += VALS[t[1]] * 15;
-                if(kP) s += (25 - (Math.min(Math.abs(m.tr - kP.r), ROWS - Math.abs(m.tr - kP.r)) + Math.min(Math.abs(m.tc - kP.c), COLS - Math.abs(m.tc - kP.c)))) * 10;
+                let s = Math.random() * 20; const t = board[m.tr][m.tc];
+                if(t) s += VALS[t[1]];
                 if(s > bestS) { bestS = s; bestM = m; }
             });
-            if(bestM && gameActive) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
+            if(bestM) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
         }, 800);
     }
 
     function checkState() {
         let k = null; for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === turn + 'K') k = {r,c};
         const enemy = (turn==='w'?'b':'w'); let isCh = false;
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] && board[r][c][0] === enemy) if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+            if(board[r][c] && board[r][c][0] === enemy) 
+                if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
         if(isCh) { document.getElementById('check-alert').classList.add('show-check'); setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1200); }
     }
 
@@ -201,7 +196,6 @@
                 const isBlack = board[r][c][0] === 'b';
                 ctx.fillStyle = isBlack ? "#d4af37" : "#fff";
                 ctx.font = "bold 38px serif"; ctx.textAlign = "center";
-                
                 if(isBlack) {
                     ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4;
                     ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.5)";

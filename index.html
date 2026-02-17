@@ -154,32 +154,46 @@
         const aiC = (myColor === 'w' ? 'b' : 'w');
         setTimeout(() => {
             let bestM = null, bestS = -Infinity, moves = [];
-            for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
-                if(board[r][c] && board[r][c][0] === aiC) 
-                    getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
+            for(let r=0; r<ROWS; r++) {
+                for(let c=0; c<COLS; c++) {
+                    if(board[r][c] && board[r][c][0] === aiC) {
+                        getMoves(r, c).forEach(m => moves.push({fr:r, fc:c, tr:m.r, tc:m.c}));
+                    }
+                }
+            }
             moves.forEach(m => {
-                let s = Math.random() * 20; const t = board[m.tr][m.tc];
+                let s = Math.random() * 20; 
+                const t = board[m.tr][m.tc];
                 if(t) s += VALS[t[1]];
                 if(s > bestS) { bestS = s; bestM = m; }
             });
-            if(bestM) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
-        }, 800);
+            if(bestM && gameActive) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
+        }, 400); // Reduced delay for faster response
     }
 
     function checkState() {
         let k = null; for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) if(board[r][c] === turn + 'K') k = {r,c};
         const enemy = (turn==='w'?'b':'w'); let isCh = false;
-        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
-            if(board[r][c] && board[r][c][0] === enemy) 
-                if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
+        for(let r=0; r<ROWS; r++) {
+            for(let c=0; c<COLS; c++) {
+                if(board[r][c] && board[r][c][0] === enemy) {
+                    if(getMoves(r,c).some(m => m.r === k?.r && m.c === k?.c)) isCh = true;
+                }
+            }
+        }
         if(isCh) { document.getElementById('check-alert').classList.add('show-check'); setTimeout(() => document.getElementById('check-alert').classList.remove('show-check'), 1200); }
     }
 
     function resetTimer() {
-        clearInterval(timerInterval); timeLeft = (turn === myColor) ? 60 : 5;
+        clearInterval(timerInterval); 
+        timeLeft = (turn === myColor) ? 60 : 10; // AI now has 10 seconds to respond
         document.getElementById('timer-box').innerText = timeLeft + "s";
         document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "AI SCANNING";
-        timerInterval = setInterval(() => { timeLeft--; document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s"; if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TEMPORAL LOCKOUT"); }, 1000);
+        timerInterval = setInterval(() => { 
+            timeLeft--; 
+            document.getElementById('timer-box').innerText = Math.max(0, timeLeft) + "s"; 
+            if(timeLeft <= 0) endGame((turn === myColor) ? "AI" : "PLAYER", "TEMPORAL LOCKOUT"); 
+        }, 1000);
     }
 
     function endGame(win, res) { gameActive = false; clearInterval(timerInterval); document.getElementById('victory-overlay').style.display = 'flex'; document.getElementById('winner-text').innerText = win === "PLAYER" ? "SECURED" : "LOST"; document.getElementById('sub-winner-text').innerText = res; }

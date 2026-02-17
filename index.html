@@ -131,7 +131,27 @@
         if(turn !== myColor) aiMove();
         requestAnimationFrame(render);
     }
+function addLogEntry(piece, fr, fc, tr, tc) {
+    const log = document.getElementById('move-log');
+    if (log.innerHTML.includes('Waiting')) log.innerHTML = '';
 
+    // Convert columns to letters (a-p) and rows to numbers
+    const cols = "abcdefghijklmnop";
+    const fromCoord = `${cols[fc]}${ROWS - fr}`;
+    const toCoord = `${cols[tc]}${ROWS - tr}`;
+    
+    const entry = document.createElement('div');
+    entry.style.marginBottom = '4px';
+    entry.style.borderBottom = '1px solid #222';
+    entry.style.paddingBottom = '2px';
+    
+    const color = piece[0] === 'w' ? '#fff' : 'var(--accent)';
+    const pieceIcon = PIECES[piece];
+    
+    entry.innerHTML = `<span style="color: ${color}">${pieceIcon}</span> ${fromCoord} → ${toCoord}`;
+    
+    log.prepend(entry); // Add latest move to the top
+}
     function initBoard() {
         board = Array(ROWS).fill().map(() => Array(COLS).fill(""));
         hasMoved = Array(ROWS).fill().map(() => Array(COLS).fill(false));
@@ -208,22 +228,80 @@
         }, 800);
     }
 
-    function executeMove(fr, fc, tr, tc) {
-        if(!gameActive) return;
-        let p = board[fr][fc]; const v = board[tr][tc];
-        if(v) {
-            const id = v[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
-            const span = document.createElement('span'); span.className = 'captured-piece'; span.innerText = PIECES[v];
-            span.style.color = v[0] === 'w' ? '#fff' : '#d4af37';
-            document.getElementById(id).appendChild(span);
-            if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
-        }
-        if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
-        board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
-        lastMove = {fr, fc, tr, tc}; turn = (turn === 'w' ? 'b' : 'w');
-        resetTimer(); checkState();
-        if(gameActive && turn !== myColor) aiMove();
+/**
+ * Helper function to translate move data into tactical notation
+ */
+function addLogEntry(piece, fr, fc, tr, tc) {
+    const log = document.getElementById('move-log');
+    // Clear initial "Waiting" message if present
+    if (log.innerHTML.includes('Waiting')) log.innerHTML = '';
+
+    // Convert numeric coordinates to chess notation (Columns: a-p, Rows: 1-12)
+    const cols = "abcdefghijklmnop";
+    const fromCoord = `${cols[fc]}${ROWS - fr}`;
+    const toCoord = `${cols[tc]}${ROWS - tr}`;
+    
+    const entry = document.createElement('div');
+    entry.style.marginBottom = '6px';
+    entry.style.borderBottom = '1px solid #222';
+    entry.style.paddingBottom = '2px';
+    
+    // Distinguish colors in the log
+    const color = piece[0] === 'w' ? '#fff' : 'var(--accent)';
+    const pieceIcon = PIECES[piece];
+    
+    // Format: [Icon] [Source] → [Destination]
+    entry.innerHTML = `<span style="color: ${color}">${pieceIcon}</span> ${fromCoord} → ${toCoord}`;
+    
+    // prepend() keeps the most recent move at the top of the sidebar
+    log.prepend(entry);
+}
+
+/**
+ * Updated execution function that manages board state, 
+ * capture visuals, and the tactical log.
+ */
+function executeMove(fr, fc, tr, tc) {
+    if(!gameActive) return;
+
+    // 1. Identify piece and record action in the log
+    let p = board[fr][fc]; 
+    const v = board[tr][tc]; // Target square content
+    addLogEntry(p, fr, fc, tr, tc);
+
+    // 2. Process Captures
+    if(v) {
+        const id = v[0] === myColor ? 'captured-by-ai' : 'captured-by-player';
+        const span = document.createElement('span'); 
+        span.className = 'captured-piece'; 
+        span.innerText = PIECES[v];
+        span.style.color = v[0] === 'w' ? '#fff' : '#d4af37';
+        document.getElementById(id).appendChild(span);
+        
+        // Check for Game Over via Regicide
+        if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
     }
+
+    // 3. Handle Pawn Promotion (Toroidal edge promotion)
+    if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) {
+        p = p[0] + 'Q';
+    }
+
+    // 4. Update Board State
+    board[tr][tc] = p; 
+    board[fr][fc] = ""; 
+    hasMoved[tr][tc] = true; // Mark as moved for the Inertia rule
+    
+    // 5. Update UI and Global State
+    lastMove = {fr, fc, tr, tc}; 
+    turn = (turn === 'w' ? 'b' : 'w');
+    
+    resetTimer(); 
+    checkState(); // Trigger "CHECK" alert if necessary
+
+    // 6. Cycle to AI Turn if applicable
+    if(gameActive && turn !== myColor) aiMove();
+}}
 
     function checkState() {
         let k = null; const cur = turn;
@@ -295,5 +373,6 @@
 </script>
 </body>
 </html>
+
 
 

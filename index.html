@@ -74,17 +74,24 @@
         </div>
     </div>
 
-    <div id="sidebar">
-        <div class="header"><h1>VANGUARD V3.0</h1></div>
-        <div id="game-info">
-            <div class="turn-label" id="turn-text">OFFLINE</div>
-            <div id="timer-box">60s</div>
-        </div>
-        <div id="rules-primer">
-            <b>Toroidal:</b> Infinite board. Wrap-around active.<br>
-            <b>Inertia:</b> Majors move <b>Forward Only</b> on turn 1.<br>
-            <b>Timing:</b> AI 5s / You 60s.
-        </div>
+<div id="sidebar">
+    <div class="header"><h1>VANGUARD V3.0</h1></div>
+    <div id="game-info">
+        <div class="turn-label" id="turn-text">OFFLINE</div>
+        <div id="timer-box">60s</div>
+    </div>
+    
+    <div class="gallery-label">Tactical Log</div>
+    <div id="move-log" style="height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); border: 1px solid var(--border); padding: 10px; font-family: monospace; font-size: 0.75rem; margin-bottom: 20px; border-radius: 4px;">
+        <div style="color: #666;">Waiting for deployment...</div>
+    </div>
+
+    <div id="rules-primer">
+        <b>Toroidal:</b> Infinite board. Wrap-around active.<br>
+        <b>Inertia:</b> Majors move <b>Forward Only</b> on turn 1.<br>
+        <b>Timing:</b> AI 5s / You 60s.
+    </div>
+    </div>
         <div id="gallery">
             <div class="gallery-label">AI Salvage</div>
             <div id="captured-by-ai" class="captured-row"></div>
@@ -288,4 +295,5 @@
 </script>
 </body>
 </html>
+
 

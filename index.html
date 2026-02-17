@@ -115,11 +115,18 @@
     function getMoves(r, c) {
         const piece = board[r][c]; if(!piece) return [];
         const col = piece[0], type = piece[1], moves = [], fwd = col==='w'?-1:1;
+        
         if(type==='P') {
             let nr = (r+fwd+ROWS)%ROWS; if(!board[nr][c]) moves.push({r:nr, c:c});
             [-1, 1].forEach(dc => { let nc = (c+dc+COLS)%COLS; if(board[nr][nc] && board[nr][nc][0] !== col) moves.push({r:nr, c:nc}); });
         } else {
             let dirs = (type==='N')?[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]:(type==='R')?[[0,1],[0,-1],[1,0],[-1,0]]:(type==='B')?[[1,1],[1,-1],[-1,1],[-1,-1]]:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]];
+            
+            // First Move Forward Logic (Inertia)
+            if (!hasMoved[r][c] && type !== 'K') {
+                dirs = dirs.filter(d => (col === 'w' ? d[0] < 0 : d[0] > 0));
+            }
+
             const lim = (type==='K' || type==='N') ? 2 : 16;
             dirs.forEach(([dr, dc]) => {
                 for(let i=1; i<lim; i++) {
@@ -143,7 +150,8 @@
             if(v[1] === 'K') return endGame(p[0] === myColor ? "PLAYER" : "AI", "REGICIDE");
         }
         if(p[1] === 'P' && (tr === 0 || tr === ROWS - 1)) p = p[0] + 'Q';
-        board[tr][tc] = p; board[fr][fc] = ""; hasMoved[tr][tc] = true;
+        board[tr][tc] = p; board[fr][fc] = ""; 
+        hasMoved[tr][tc] = true; // Mark piece as having moved
         turn = (turn === 'w' ? 'b' : 'w');
         resetTimer(); checkState();
         if(gameActive && turn !== myColor) aiMove();
@@ -168,7 +176,7 @@
                 if(s > bestS) { bestS = s; bestM = m; }
             });
             if(bestM && gameActive) executeMove(bestM.fr, bestM.fc, bestM.tr, bestM.tc);
-        }, 400); // Reduced delay for faster response
+        }, 400);
     }
 
     function checkState() {
@@ -186,7 +194,7 @@
 
     function resetTimer() {
         clearInterval(timerInterval); 
-        timeLeft = (turn === myColor) ? 60 : 10; // AI now has 10 seconds to respond
+        timeLeft = (turn === myColor) ? 60 : 10;
         document.getElementById('timer-box').innerText = timeLeft + "s";
         document.getElementById('turn-text').innerText = (turn === myColor) ? "YOUR COMMAND" : "AI SCANNING";
         timerInterval = setInterval(() => { 

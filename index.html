@@ -7,16 +7,16 @@
         :root { 
             --bg: #1a0f0a; 
             --panel: #2d1b14; 
-            --accent: #d4af37; /* Gold leaf */
+            --accent: #d4af37; 
             --text: #f5e6d3; 
-            --tile-light: #e8dcc4; /* Polished Oak */
-            --tile-dark: #4e342e;  /* Deep Mahogany */
+            --tile-light: #e8dcc4; 
+            --tile-dark: #4e342e;  
             --border: #3e2723;
         }
 
-        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Georgia', serif; height: 100vh; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); margin: 0; display: flex; font-family: 'Georgia', serif; height: 100vh; overflow: hidden; align-items: flex-start; }
         
-        #sidebar { width: 340px; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 4px ridge var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
+        #sidebar { width: 340px; height: 100vh; background: var(--panel); display: flex; flex-direction: column; padding: 25px; border-right: 4px ridge var(--border); box-sizing: border-box; box-shadow: 10px 0 30px rgba(0,0,0,0.5); }
         .header h1 { font-size: 0.8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 25px; border-bottom: 1px solid var(--accent); padding-bottom: 15px; text-transform: uppercase; }
         
         #game-info { background: #3e2723; padding: 20px; border-radius: 4px; text-align: center; border: 2px inset var(--border); margin-bottom: 20px; }
@@ -34,7 +34,7 @@
         .captured-row { display: flex; flex-wrap: wrap; gap: 8px; min-height: 40px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 4px; }
         .captured-piece { font-size: 1.6rem; }
 
-        #canvas-container { flex-grow: 1; position: relative; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #3e2723 0%, #1a0f0a 100%); }
+        #canvas-container { flex-grow: 1; height: 100vh; position: relative; display: flex; justify-content: center; align-items: flex-start; padding-top: 25px; background: radial-gradient(circle, #3e2723 0%, #1a0f0a 100%); }
         canvas { cursor: crosshair; box-shadow: 0 0 50px rgba(0,0,0,1); border: 10px solid #2d1b14; }
         
         .btn { background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 4px; font-weight: 900; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
@@ -71,14 +71,19 @@
     const canvas = document.getElementById('gameCanvas'), ctx = canvas.getContext('2d');
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    function playThud() {
-        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-        osc.type = 'triangle'; osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+    
+    function playWoodThud() {
+        const now = audioCtx.currentTime;
+        const click = audioCtx.createOscillator(), clickGain = audioCtx.createGain();
+        click.type = 'sine'; click.frequency.setValueAtTime(800, now);
+        clickGain.gain.setValueAtTime(0.1, now); clickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        const thud = audioCtx.createOscillator(), thudGain = audioCtx.createGain();
+        thud.type = 'triangle'; thud.frequency.setValueAtTime(120, now);
+        thud.frequency.exponentialRampToValueAtTime(60, now + 0.1);
+        thudGain.gain.setValueAtTime(0.3, now); thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        click.connect(clickGain); clickGain.connect(audioCtx.destination);
+        thud.connect(thudGain); thudGain.connect(audioCtx.destination);
+        click.start(now); click.stop(now + 0.05); thud.start(now); thud.stop(now + 0.15);
     }
 
     function addLogEntry(piece, fr, fc, tr, tc) {
@@ -87,6 +92,7 @@
         const cols = "abcdefghijklmnop";
         const entry = document.createElement('div');
         entry.style.borderBottom = '1px solid #3e2723';
+        entry.style.padding = '2px 0';
         entry.innerHTML = `<span style="color:${piece[0]==='w'?'#fff':'var(--accent)'}">${PIECES[piece]}</span> ${cols[fc]}${ROWS-fr} → ${cols[tc]}${ROWS-tr}`;
         log.prepend(entry);
     }
@@ -136,7 +142,7 @@
     function executeMove(fr, fc, tr, tc) {
         if(!gameActive) return;
         let p = board[fr][fc]; const v = board[tr][tc];
-        addLogEntry(p, fr, fc, tr, tc); playThud();
+        addLogEntry(p, fr, fc, tr, tc); playWoodThud();
         if(v) {
             const span = document.createElement('span'); span.className = 'captured-piece'; span.innerText = PIECES[v];
             span.style.color = v[0] === 'w' ? '#fff' : '#d4af37';
@@ -196,18 +202,12 @@
                 ctx.fillStyle = isBlack ? "#d4af37" : "#fff";
                 ctx.font = "bold 38px serif"; ctx.textAlign = "center";
                 
-                // VISIBILITY FIX: Add a dark shadow/outline to gold pieces on light squares
                 if(isBlack) {
-                    ctx.shadowColor = "rgba(0,0,0,0.8)";
-                    ctx.shadowBlur = 4;
-                    ctx.lineWidth = 1;
-                    ctx.strokeStyle = "rgba(0,0,0,0.5)";
+                    ctx.shadowColor = "rgba(0,0,0,0.8)"; ctx.shadowBlur = 4;
+                    ctx.lineWidth = 1; ctx.strokeStyle = "rgba(0,0,0,0.5)";
                     ctx.strokeText(PIECES[board[r][c]], dc*CELL+CELL/2, dr*CELL+CELL/2+13);
                 }
-                
                 ctx.fillText(PIECES[board[r][c]], dc*CELL+CELL/2, dr*CELL+CELL/2+13);
-                
-                // Reset shadow after drawing
                 ctx.shadowBlur = 0;
             }
         }

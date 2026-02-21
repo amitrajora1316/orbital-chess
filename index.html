@@ -6,16 +6,20 @@
     <style>
         :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
+        
         #sidebar { width: 320px; background: var(--panel); padding: 25px; border-right: 1px solid #2a2a35; display: flex; flex-direction: column; }
         .timer-box { background: #11111d; padding: 15px; border-radius: 4px; border: 1px solid #d4af3733; margin-bottom: 15px; }
         .fuel-bar { height: 4px; background: #1a1a25; margin-top: 8px; }
         .fuel-fill { height: 100%; transition: width 0.1s linear; }
+
+        /* Overlays */
         #overlay, #victory-overlay { 
             position: absolute; top:0; left:0; width:100%; height:100%; 
             background: rgba(2,2,4,0.98); display: flex; flex-direction: column; 
             justify-content: center; align-items: center; z-index: 1000; text-align: center; 
         }
         #victory-overlay { display: none; background: rgba(2,2,4,0.9); }
+        
         .btn { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 12px 30px; margin: 10px; cursor: pointer; letter-spacing: 3px; }
         .btn:hover { background: var(--accent); color: #000; }
         #move-log { flex-grow: 1; background: #050508; padding: 12px; font-family: monospace; font-size: 0.7rem; overflow-y: auto; color: #666; }
@@ -30,8 +34,8 @@
         <button class="btn" onclick="setLang('de')">DEUTSCH</button>
     </div>
     <div id="side-selection" style="display:none;">
-        <button class="btn" onclick="startGame('w')">WHITE</button>
-        <button class="btn" onclick="startGame('b')">BLACK</button>
+        <button class="btn" id="btn-w" onclick="startGame('w')">WHITE (BOTTOM)</button>
+        <button class="btn" id="btn-b" onclick="startGame('b')">BLACK (BOTTOM)</button>
     </div>
 </div>
 
@@ -42,11 +46,12 @@
 </div>
 
 <div id="sidebar">
+    <h1 id="ui-title" style="font-size: .8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 20px;">TACTICAL HUB</h1>
     <div id="turn-prompt" style="color:var(--accent); text-align:center; margin-bottom:10px; font-weight:bold; display:none;">YOUR TURN</div>
     <div class="timer-box">
-        <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span>WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span id="ui-wf">WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bw-fill" class="fuel-fill" style="background: var(--accent); width: 100%;"></div></div>
-        <div style="display:flex; justify-content: space-between; font-size: 0.65rem; margin-top: 12px;"><span>BLACK FUEL</span> <span id="tb-val">60.0s</span></div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem; margin-top: 12px;"><span id="ui-bf">BLACK FUEL</span> <span id="tb-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bb-fill" class="fuel-fill" style="background: #7a7a9a; width: 100%;"></div></div>
     </div>
     <div id="move-log"></div>
@@ -62,53 +67,27 @@ const ctx = canvas.getContext('2d');
 const PIECES = { wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙', bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟' };
 const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 1000 };
 const TEXTS = {
-    en: { 
-        title: "TACTICAL HUB", 
-        wf: "WHITE FUEL", 
-        bf: "BLACK FUEL", 
-        btnW: "WHITE (BOTTOM)", 
-        btnB: "BLACK (BOTTOM)", 
-        turn: "YOUR TURN", 
-        win: "ARENA SECURED", 
-        loss: "CRITICAL FAILURE",
-        restart: "SYSTEM REBOOT"
-    },
-    de: { 
-        title: "TAKTIK-ZENTRALE", 
-        wf: "WEISS ENERGIE", 
-        bf: "SCHWARZ ENERGIE", 
-        btnW: "WEISS (UNTEN)", 
-        btnB: "SCHWARZ (UNTEN)", 
-        turn: "DU BIST DRAN", 
-        win: "ARENA GESICHERT", 
-        loss: "SYSTEMFEHLER",
-        restart: "SYSTEM-NEUSTART"
-    }
+    en: { title: "TACTICAL HUB", wf: "WHITE FUEL", bf: "BLACK FUEL", btnW: "WHITE (BOTTOM)", btnB: "BLACK (BOTTOM)", turn: "YOUR TURN", win: "ARENA SECURED", loss: "CRITICAL FAILURE", restart: "SYSTEM REBOOT" },
+    de: { title: "TAKTIK-ZENTRALE", wf: "WEISS ENERGIE", bf: "SCHWARZ ENERGIE", btnW: "WEISS (UNTEN)", btnB: "SCHWARZ (UNTEN)", turn: "DU BIST DRAN", win: "ARENA GESICHERT", loss: "SYSTEMFEHLER", restart: "SYSTEM-NEUSTART" }
 };
-let curLang = 'en';
-let board, turn = 'w', playerColor = 'w', selected = null, gameActive = false, validMoves = [];
+
+let curLang = 'en', board, turn = 'w', playerColor = 'w', selected = null, gameActive = false, validMoves = [];
 let fuel = { w: 60, b: 60 }, lastTick = 0, cam = { x: 50, y: 50 };
 
-// --- MENU LOGIC ---
+// --- MENU & LANGUAGE LOGIC ---
 function setLang(l) {
     curLang = l;
     const t = TEXTS[l];
-    
-    // Update Sidebar and Labels
     document.getElementById('ui-title').innerText = t.title;
     document.getElementById('ui-wf').innerText = t.wf;
     document.getElementById('ui-bf').innerText = t.bf;
-    
-    // Update Menu Buttons
     document.getElementById('btn-w').innerText = t.btnW;
     document.getElementById('btn-b').innerText = t.btnB;
-    
-    // Update Victory Screen (pre-emptive)
     document.querySelector('#victory-overlay .btn').innerText = t.restart;
-
-    // Transition Menu
     document.getElementById('lang-btns').style.display = 'none';
     document.getElementById('side-selection').style.display = 'block';
+}
+
 function startGame(side) {
     playerColor = side;
     document.getElementById('overlay').style.display = 'none';
@@ -131,57 +110,12 @@ function initBoard() {
     }
 }
 
-<script>
-// ... (Keep existing variables like ROWS, COLS, etc.) ...
-
-const TEXTS = {
-    en: { 
-        title: "TACTICAL HUB", 
-        wf: "WHITE FUEL", 
-        bf: "BLACK FUEL", 
-        btnW: "WHITE (BOTTOM)", 
-        btnB: "BLACK (BOTTOM)", 
-        turn: "YOUR TURN", 
-        win: "ARENA SECURED", 
-        loss: "CRITICAL FAILURE",
-        restart: "SYSTEM REBOOT"
-    },
-    de: { 
-        title: "TAKTIK-ZENTRALE", 
-        wf: "WEISS ENERGIE", 
-        bf: "SCHWARZ ENERGIE", 
-        btnW: "WEISS (UNTEN)", 
-        btnB: "SCHWARZ (UNTEN)", 
-        turn: "DU BIST DRAN", 
-        win: "ARENA GESICHERT", 
-        loss: "SYSTEMFEHLER",
-        restart: "SYSTEM-NEUSTART"
-    }
-};
-let curLang = 'en';
-
-/**
- * FIXED: setLang now correctly updates all UI elements
- */
-
-}
-
-function updateHUD() {
-    const prompt = document.getElementById('turn-prompt');
-    prompt.style.display = (turn === playerColor) ? 'block' : 'none';
-    prompt.innerText = TEXTS[curLang].turn;
-}
-
 function endGame(winner, reason) {
     gameActive = false;
     const t = TEXTS[curLang];
     document.getElementById('victory-overlay').style.display = 'flex';
     document.getElementById('victory-title').innerText = (winner === playerColor) ? t.win : t.loss;
     document.getElementById('victory-msg').innerText = reason;
-}
-
-// ... (Rest of your game engine) ...
-</script>
 }
 
 function executeMove(from, to) {
@@ -193,9 +127,7 @@ function executeMove(from, to) {
     }
     fuel[turn] = Math.min(60, fuel[turn] + 10);
     board[to.r][to.c] = p; board[from.r][from.c] = '';
-    
     document.getElementById('move-log').innerHTML = `<div>> ${p[1]} ${from.r}:${from.c} to ${to.r}:${to.c}</div>` + document.getElementById('move-log').innerHTML;
-    
     turn = turn === 'w' ? 'b' : 'w';
     updateHUD();
     if (gameActive && turn !== playerColor) setTimeout(aiMove, 600);
@@ -207,116 +139,4 @@ function aiMove() {
     const aiCol = playerColor === 'w' ? 'b' : 'w';
     let moves = [];
     for(let r=0; r<ROWS; r++) {
-        for(let c=0; c<COLS; c++) {
-            if(board[r][c] && board[r][c][0] === aiCol) {
-                getMoves(r, c).forEach(m => {
-                    let score = Math.random() * 5; // Variance
-                    if (board[m.r][m.c]) score += VALS[board[m.r][m.c][1]] * 10; // Capture
-                    moves.push({from:{r,c}, to:m, score});
-                });
-            }
-        }
-    }
-    moves.sort((a,b) => b.score - a.score);
-    if(moves[0]) executeMove(moves[0].from, moves[0].to);
-}
-
-function getMoves(r, c) {
-    const p = board[r][c]; if (!p) return [];
-    const type = p[1], col = p[0], moves = [];
-    if (type === 'P') {
-        const fwd = col === 'w' ? -1 : 1;
-        const nr = (r + fwd + ROWS) % ROWS;
-        if (!board[nr][c]) moves.push({r: nr, c: c});
-        [-1, 1].forEach(dc => {
-            const nc = (c + dc + COLS) % COLS;
-            if (board[nr][nc] && board[nr][nc][0] !== col) moves.push({r: nr, c: nc});
-        });
-    } else {
-        const dirs = {'R':[[0,1],[0,-1],[1,0],[-1,0]], 'B':[[1,1],[1,-1],[-1,1],[-1,-1]], 'Q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'N':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]}[type];
-        const lim = (type === 'K' || type === 'N') ? 2 : 16;
-        dirs.forEach(([dr, dc]) => {
-            for (let i = 1; i < lim; i++) {
-                const nr = (r + dr * i + ROWS) % ROWS, nc = (c + dc * i + COLS) % COLS;
-                if (board[nr][nc] && board[nr][nc][0] === col) break;
-                moves.push({r: nr, c: nc});
-                if (board[nr][nc]) break;
-            }
-        });
-    }
-    return moves;
-}
-
-// --- UI & RENDERING ---
-function updateHUD() {
-    document.getElementById('turn-prompt').style.display = (turn === playerColor) ? 'block' : 'none';
-}
-
-function getDisplayCoords(r, c) {
-    if (playerColor === 'b') return { dr: (ROWS - 1) - r, dc: (COLS - 1) - c };
-    return { dr: r, dc: c };
-}
-
-function getActualCoords(dr, dc) {
-    if (playerColor === 'b') return { r: (ROWS - 1) - dr, c: (COLS - 1) - dc };
-    return { r: dr, c: dc };
-}
-
-function draw() {
-    canvas.width = window.innerWidth - 320; canvas.height = window.innerHeight;
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0, canvas.width, canvas.height);
-    if (!gameActive && !board) { requestAnimationFrame(draw); return; }
-    for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-            const view = getDisplayCoords(r, c);
-            const x = view.dc * CELL + cam.x, y = view.dr * CELL + cam.y;
-            ctx.fillStyle = (r + c) % 2 === 0 ? '#b57a44' : '#1a1a1a';
-            ctx.fillRect(x, y, CELL, CELL);
-            
-            // Path Highlight
-            if (validMoves.some(m => m.r === r && m.c === c)) {
-                ctx.fillStyle = board[r][c] ? 'rgba(255, 50, 50, 0.4)' : 'rgba(212, 175, 55, 0.3)';
-                ctx.beginPath(); ctx.arc(x + CELL/2, y + CELL/2, 10, 0, Math.PI*2); ctx.fill();
-            }
-            if (board[r][c]) {
-                ctx.fillStyle = board[r][c][0] === 'w' ? '#fff' : '#b19cd9';
-                ctx.font = '36px serif'; ctx.textAlign = 'center';
-                ctx.fillText(PIECES[board[r][c]], x + CELL/2, y + CELL/2 + 13);
-            }
-        }
-    }
-    requestAnimationFrame(draw);
-}
-
-function updateTimer() {
-    if (!gameActive) return;
-    let now = Date.now(); let delta = (now - lastTick) / 1000; lastTick = now;
-    fuel[turn] -= delta;
-    if (fuel[turn] <= 0) endGame(turn === 'w' ? 'b' : 'w', "System Overload: Fuel Depleted");
-    document.getElementById('tw-val').innerText = fuel.w.toFixed(1) + 's';
-    document.getElementById('tb-val').innerText = fuel.b.toFixed(1) + 's';
-    document.getElementById('bw-fill').style.width = (fuel.w / 60 * 100) + '%';
-    document.getElementById('bb-fill').style.width = (fuel.b / 60 * 100) + '%';
-    requestAnimationFrame(updateTimer);
-}
-
-canvas.onmousedown = e => {
-    if (!gameActive || turn !== playerColor) return;
-    const mx = e.offsetX - cam.x, my = e.offsetY - cam.y;
-    const vdc = Math.floor(mx/CELL), vdr = Math.floor(my/CELL);
-    if (vdr < 0 || vdr >= ROWS || vdc < 0 || vdc >= COLS) return;
-    const { r, c } = getActualCoords(vdr, vdc);
-    if (selected) {
-        if (validMoves.some(m => m.r === r && m.c === c)) executeMove(selected, {r, c});
-        selected = null; validMoves = [];
-    } else if (board[r][c] && board[r][c][0] === playerColor) {
-        selected = {r, c}; validMoves = getMoves(r, c);
-    }
-};
-
-draw();
-</script>
-</body>
-</html>
-
-
+        for(let c=0; c<COLS; c++)

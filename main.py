@@ -32,16 +32,15 @@ class OrbitalEngine:
         self.last_update = pygame.time.get_ticks()
 
     def setup_board(self):
-        # Bauern in der Standard-Reihe
+        # Standard Bauernreihen
         for c in range(BOARD_COLS):
             self.board[1][c] = "bP"; self.board[6][c] = "wP"
-            
-        # NEU: Zusätzliche Reihe Bauern HINTER den Hauptfiguren
+        
+        # NEU: Zusätzliche Bauernreihe HINTER den Hauptstücken (Reihe 0 und 7)
         for c in range(BOARD_COLS):
             self.board[0][c] = "bP"; self.board[7][c] = "wP"
             
-        # Hauptfiguren (werden nun über die hinteren Bauern geschrieben)
-        # Um die Bauern hinter den Figuren zu behalten, setzen wir die Figuren eine Reihe vor
+        # Hauptfiguren (überschreiben die Bauern auf den entsprechenden Feldern)
         layout = ["R", "N", "B", "Q", "K", "B", "N", "R"]
         for i, p in enumerate(layout + layout):
             self.board[0][i] = "b" + p; self.board[7][i] = "w" + p
@@ -73,7 +72,7 @@ class OrbitalEngine:
                         break
         elif p_type == 'P':
             d = -1 if color == 'w' else 1
-            # Nur Ein-Schritt-Vorwärts (keine Doppelschritt-Beschränkung/Logik)
+            # Nur 1 Schritt vorwärts möglich (keine Doppelschritt-Logik)
             if not self.board[(r + d) % BOARD_ROWS][c]: moves.append(((r + d) % BOARD_ROWS, c))
             for side in [-1, 1]:
                 nr, nc = (r + d) % BOARD_ROWS, (c + side) % BOARD_COLS

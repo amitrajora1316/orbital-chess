@@ -30,20 +30,23 @@ class OrbitalEngine:
         self.last_update = pygame.time.get_ticks()
 
     def setup_board(self):
-        # 1. Absolute Edges: Row of Pawns
-        for c in range(BOARD_COLS):
+        # Center the 8-piece sets (Columns 4 to 11)
+        active_cols = range(4, 12)
+
+        # 1. Absolute Edges: Row of 8 Pawns
+        for c in active_cols:
             self.board[0][c] = "bP"
             self.board[7][c] = "wP"
         
-        # 2. Behind Edge Pawns: Main Pieces
+        # 2. Middle Rank: One standard set of 8 pieces
         layout = ["R", "N", "B", "Q", "K", "B", "N", "R"]
-        full_layout = layout + layout
-        for i, p in enumerate(full_layout):
-            self.board[1][i] = "b" + p
-            self.board[6][i] = "w" + p
+        for i, p in enumerate(layout):
+            col_idx = i + 4
+            self.board[1][col_idx] = "b" + p
+            self.board[6][col_idx] = "w" + p
 
-        # 3. In front of Main Pieces: Second row of Pawns
-        for c in range(BOARD_COLS):
+        # 3. Inner Rank: Second row of 8 Pawns
+        for c in active_cols:
             self.board[2][c] = "bP"
             self.board[5][c] = "wP"
 
@@ -53,7 +56,7 @@ class OrbitalEngine:
         color, p_type = piece[0], piece[1]
         moves = []
         
-        # Standard Chess Directions (Now unrestricted in all directions)
+        # Standard Chess Powers (Full direction freedom)
         dirs = {
             'R': [(0,1), (0,-1), (1,0), (-1,0)],
             'B': [(1,1), (1,-1), (-1,1), (-1,-1)],
@@ -74,23 +77,14 @@ class OrbitalEngine:
                         if self.board[nr][nc][0] != color: moves.append((nr, nc))
                         break
         elif p_type == 'P':
-            # Pawn Movement (Logic simplified to handle both directions)
-            # Standard move direction based on color
             fwd = -1 if color == 'w' else 1
-            back = 1 if color == 'w' else -1
-            
-            # Forward move (Single step, no restrictions)
+            # Move forward 1 step
             nr_f = (r + fwd) % BOARD_ROWS
             if not self.board[nr_f][c]: moves.append((nr_f, c))
-            
-            # Captures (Diagonal Forward)
+            # Diagonal Forward captures
             for side in [-1, 1]:
                 nr, nc = (nr_f), (c + side) % BOARD_COLS
                 if self.board[nr][nc] and self.board[nr][nc][0] != color: moves.append((nr, nc))
-                
-            # NOTE: If you meant Pawns should ALSO move backward like other pieces, 
-            # you can add: if not self.board[(r + back) % BOARD_ROWS][c]: moves.append(...)
-            
         return moves
 
     def execute_move(self, start, end):
@@ -134,4 +128,81 @@ class OrbitalEngine:
                     circ_col = (180, 180, 180) if piece[0] == 'w' else (50, 50, 60)
                     if not is_main: circ_col = (90, 90, 90) if piece[0] == 'w' else (25, 25, 30)
                     
-                    pygame.draw.circle(screen, circ_col, (x + CELL_SIZE//2, y + CELL_SIZE//2), CELL_SIZE//
+                    pygame.draw.circle(screen, circ_col, (x + CELL_SIZE//2, y + CELL_SIZE//2), CELL_SIZE//2 - 12)
+                    txt = font.render(piece[1], True, p_col)
+                    screen.blit(txt, (x + CELL_SIZE//2 - 8, y + CELL_SIZE//2 - 12))
+
+async def main():
+    pygame.init()
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Orbitales Schach")
+    game = OrbitalEngine()
+    font = pygame.font.SysFont('Consolas', 20, True)
+    clock = pygame.time.Clock()
+
+    while True:
+        if game.game_active:
+            now = pygame.time.get_ticks()
+            game.fuel[game.turn] -= (now - game.last_update) / 1000
+            game.last_update = now
+            if game.fuel[game.turn] <= 0:
+                game.fuel[game.turn] = 0; game.game_active = False
+                game.winner = "SCHWARZ (Zeit)" if game.turn == 'w' else "WEISS (Zeit)"
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT: return
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 3: game.is_panning = True
+                elif event.button == 1 and game.game_active:
+                    mx, my = pygame.mouse.get_pos()
+                    if mx < 1050:
+                        grid_c, grid_r = int((mx - game.cam_x) // CELL_SIZE), int((my - game.cam_y) // CELL_SIZE)
+                        real_r, real_c = grid_r % BOARD_ROWS, grid_c % BOARD_COLS
+                        if game.selected:
+                            if (real_r, real_c) in game.get_moves(game.selected[0], game.selected[1]):
+                                game.execute_move(game.selected, (real_r, real_c))
+                            game.selected = None
+                        elif game.board[real_r][real_c] and game.board[real_r][real_c][0] == game.turn:
+                            game.selected = (real_r, real_c)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 3: game.is_panning = False
+            if event.type == pygame.MOUSEMOTION and game.is_panning:
+                game.cam_x += event.rel[0]; game.cam_y += event.rel[1]
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE: game.cam_x, game.cam_y = START_X, START_Y 
+                if event.key == pygame.K_h: game.show_buffer = not game.show_buffer
+                if event.key == pygame.K_r: game.reset_game()
+
+        screen.fill(COLORS["bg"])
+        game.draw(screen, font)
+        
+        # Sidebar UI (German)
+        pygame.draw.rect(screen, COLORS["panel"], (1050, 0, 250, HEIGHT))
+        y_off = 40
+        for side, label in [('w', "WEISS"), ('b', "SCHWARZ")]:
+            f = game.fuel[side]
+            screen.blit(font.render(f"{label} TREIBSTOFF: {int(f)}s", True, (255,255,255)), (1070, y_off))
+            pygame.draw.rect(screen, (40, 40, 60), (1070, y_off+30, 160, 15))
+            pygame.draw.rect(screen, (0, 255, 0) if f > 10 else (255, 50, 50), (1070, y_off+30, int((f/50)*160), 15))
+            y_off += 90
+
+        instructions = [
+            "STEUERUNG:", 
+            "RECHTSKLICK-ZIEHEN: Schwenken", 
+            "LEERTASTE: Zentrieren", 
+            "H: Geister-Modus", 
+            "R: Spiel zurücksetzen"
+        ]
+        for i, text in enumerate(instructions):
+            screen.blit(font.render(text, True, (140, 140, 160)), (1070, 300 + i*30))
+
+        if not game.game_active:
+            msg = font.render(f"SIEGER: {game.winner}", True, (255,255,255))
+            pygame.draw.rect(screen, (0,0,0), (WIDTH//2-200, HEIGHT//2-30, 400, 60))
+            screen.blit(msg, (WIDTH//2-180, HEIGHT//2-15))
+
+        pygame.display.flip()
+        await asyncio.sleep(0)
+        clock.tick(60)
+
+if __name__ == "__main__":
+    asyncio.run(main())

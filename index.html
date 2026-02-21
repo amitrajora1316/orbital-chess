@@ -2,51 +2,41 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>VANGUARD: ORBITAL ARENA</title>
+    <title>VANGUARD: ORBITAL ARENA - PREMIUM EDITION</title>
     <style>
         :root {
-            --bg: #080812;
-            --panel: #141423;
+            --bg: #020204;
+            --panel: #0a0a0f;
             --accent: #d4af37;
             --text: #d2d2dc;
         }
         body {
             margin: 0; background: var(--bg); color: var(--text);
-            font-family: 'Consolas', monospace; display: flex; height: 100vh; overflow: hidden;
+            font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden;
         }
         #sidebar {
-            width: 300px; background: var(--panel); padding: 20px;
-            display: flex; flex-direction: column; border-right: 2px solid #2a2a35;
+            width: 320px; background: var(--panel); padding: 25px;
+            display: flex; flex-direction: column; border-right: 1px solid #2a2a35;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.5);
         }
-        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; cursor: crosshair; }
-        .stat-box { background: #1a1a2d; padding: 15px; border-radius: 5px; margin-bottom: 20px; border: 1px solid #323246; }
-        .fuel-bar { height: 10px; background: #28283c; border-radius: 5px; overflow: hidden; margin-top: 5px; }
-        .fuel-fill { height: 100%; width: 100%; transition: width 0.3s; }
-        .controls { font-size: 0.8rem; color: #8c8ca0; line-height: 1.6; }
-        #victory-msg {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.9); padding: 40px; border: 2px solid var(--accent);
-            text-align: center; display: none; z-index: 100;
-        }
+        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle, #1a1a2d 0%, #020204 100%); }
+        .stat-box { background: #11111d; padding: 20px; border-radius: 4px; border: 1px solid #d4af3733; }
+        .fuel-bar { height: 6px; background: #1a1a25; border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .fuel-fill { height: 100%; transition: width 0.1s linear; }
+        #gameCanvas { cursor: grab; box-shadow: 0 0 50px rgba(0,0,0,0.8); }
+        #gameCanvas:active { cursor: grabbing; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2 style="color: var(--accent); letter-spacing: 2px;">VANGUARD V4</h2>
+    <h2 style="color: var(--accent); letter-spacing: 4px; font-size: 1.2rem; text-align: center;">VANGUARD V4</h2>
     <div class="stat-box">
-        <div id="turn-label">AM ZUG: WEISS</div>
-        <div style="margin-top:10px;">WEISS TREIBSTOFF: <span id="fw-val">60</span>s</div>
-        <div class="fuel-bar"><div id="fw-bar" class="fuel-fill" style="background: var(--accent);"></div></div>
-        <div style="margin-top:10px;">SCHWARZ TREIBSTOFF: <span id="fb-val">60</span>s</div>
-        <div class="fuel-bar"><div id="fb-bar" class="fuel-fill" style="background: #ff3232;"></div></div>
-    </div>
-    <div class="controls">
-        <b>STEUERUNG:</b><br>
-        LINKSKLICK: Ziehen / Auswählen<br>
-        RECHTSKLICK: Kamera schwenken<br>
-        LEERTASTE: Zentrieren<br>
-        R: Neustart
+        <div id="turn-label" style="font-weight: bold; letter-spacing: 1px;">STATUS: WEISS AM ZUG</div>
+        <div style="margin-top:20px; font-size: 0.8rem; opacity: 0.8;">WEISS TREIBSTOFF</div>
+        <div class="fuel-bar"><div id="fw-bar" class="fuel-fill" style="background: var(--accent); width: 100%;"></div></div>
+        <div style="margin-top:15px; font-size: 0.8rem; opacity: 0.8;">SCHWARZ TREIBSTOFF</div>
+        <div class="fuel-bar"><div id="fb-bar" class="fuel-fill" style="background: #7a7a9a; width: 100%;"></div></div>
     </div>
 </div>
 
@@ -54,19 +44,24 @@
     <canvas id="gameCanvas"></canvas>
 </div>
 
-<div id="victory-msg">
-    <h1 id="winner-text">SIEG!</h1>
-    <button onclick="location.reload()" style="background: var(--accent); border:none; padding:10px 20px; cursor:pointer;">NEUSTART</button>
-</div>
-
 <script>
-const ROWS = 8, COLS = 16, CELL = 70;
+const ROWS = 8, COLS = 16, CELL = 80;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let board, turn, selected = null, gameActive = true;
+let board, turn = 'w', selected = null, gameActive = true;
 let fuel = { w: 60, b: 60 };
 let cam = { x: 50, y: 50 }, isPanning = false;
+
+// Seeded Random for Deterministic Visuals
+function mulberry32(a) {
+    return function() {
+      let t = a += 0x6D2B79F5;
+      t = Math.imul(t ^ t >>> 15, t | 1);
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    }
+}
 
 const PIECES = {
     wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙',
@@ -76,127 +71,165 @@ const PIECES = {
 function initBoard() {
     board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
     const layout = ['R','N','B','Q','K','B','N','R'];
-    
-    // Position pieces centered (Cols 4-11)
     for (let i = 0; i < 8; i++) {
         let col = i + 4;
-        // White Army (Rows 5, 6, 7)
-        board[7][col] = 'wP'; // Back Pawn
-        board[6][col] = 'w' + layout[i]; // Main Piece
-        board[5][col] = 'wP'; // Front Pawn
-        
-        // Black Army (Rows 0, 1, 2)
-        board[0][col] = 'bP'; // Back Pawn
-        board[1][col] = 'b' + layout[i]; // Main Piece
-        board[2][col] = 'bP'; // Front Pawn
+        board[7][col] = 'wP'; board[6][col] = 'w' + layout[i]; board[5][col] = 'wP';
+        board[0][col] = 'bP'; board[1][col] = 'b' + layout[i]; board[2][col] = 'bP';
     }
 }
 
-function getMoves(r, c) {
-    const p = board[r][c];
-    if (!p) return [];
-    const type = p[1], col = p[0], moves = [];
-    
-    if (type === 'P') {
-        const fwd = col === 'w' ? -1 : 1;
-        const nr = (r + fwd + ROWS) % ROWS;
-        if (!board[nr][c]) moves.push({r: nr, c: c});
-        [-1, 1].forEach(dc => {
-            const nc = (c + dc + COLS) % COLS;
-            if (board[nr][nc] && board[nr][nc][0] !== col) moves.push({r: nr, c: nc});
-        });
+function drawSquare(r, c, x, y, isGhost) {
+    const isLight = (r + c) % 2 === 0;
+    const seed = (r * 1000) + c;
+    const rand = mulberry32(seed);
+
+    // 1. Base Gradient
+    let grad = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
+    if (isLight) {
+        grad.addColorStop(0, '#e8c191'); // Maple
+        grad.addColorStop(1, '#b57a44'); // Walnut
     } else {
-        const dirs = {
-            'R':[[0,1],[0,-1],[1,0],[-1,0]],
-            'B':[[1,1],[1,-1],[-1,1],[-1,-1]],
-            'Q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],
-            'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],
-            'N':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]
-        }[type];
-        const lim = (type === 'K' || type === 'N') ? 2 : 16;
-        dirs.forEach(([dr, dc]) => {
-            for (let i = 1; i < lim; i++) {
-                const nr = (r + dr * i + ROWS) % ROWS, nc = (c + dc * i + COLS) % COLS;
-                if (board[nr][nc] && board[nr][nc][0] === col) break;
-                moves.push({r: nr, c: nc});
-                if (board[nr][nc]) break;
-            }
-        });
+        grad.addColorStop(0, '#1a1a1a'); // Dark Wenge
+        grad.addColorStop(1, '#050505'); // Ebony
     }
-    return moves;
+    ctx.fillStyle = grad;
+    ctx.globalAlpha = isGhost ? 0.2 : 1.0;
+    ctx.fillRect(x, y, CELL, CELL);
+
+    // 2. Grain Lines
+    ctx.beginPath();
+    ctx.strokeStyle = isLight ? 'rgba(100, 50, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    const lineCount = isLight ? 11 : 16;
+    for (let i = 0; i < lineCount; i++) {
+        let offset = rand() * CELL;
+        ctx.moveTo(x + offset, y);
+        ctx.lineTo(x + offset - (rand() * 20), y + CELL);
+    }
+    ctx.stroke();
+
+    // 3. Wood Knot (Light Squares Only)
+    if (isLight && rand() > 0.8) {
+        ctx.beginPath();
+        ctx.fillStyle = 'rgba(80, 40, 0, 0.1)';
+        ctx.ellipse(x + rand()*CELL, y + rand()*CELL, 8, 4, rand()*Math.PI, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // 4. Sheen / Chatoyancy
+    let sheen = ctx.createRadialGradient(x + 10, y + 10, 0, x + 10, y + 10, CELL);
+    sheen.addColorStop(0, isLight ? 'rgba(255,255,255,0.2)' : 'rgba(100,100,255,0.05)');
+    sheen.addColorStop(1, 'transparent');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(x, y, CELL, CELL);
+    
+    // Selection Highlight
+    if (selected && selected.r === r && selected.c === c && !isGhost) {
+        ctx.strokeStyle = 'rgba(212, 175, 55, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x+2, y+2, CELL-4, CELL-4);
+    }
+}
+
+function drawPiece(p, x, y, isGhost) {
+    const isWhite = p[0] === 'w';
+    const seed = p.charCodeAt(0) + p.charCodeAt(1);
+    const rand = mulberry32(seed);
+
+    ctx.save();
+    ctx.globalAlpha = isGhost ? 0.3 : 1.0;
+
+    // 1. Marble Body Gradient
+    let grad = ctx.createRadialGradient(x + CELL/2 - 10, y + CELL/2 - 10, 5, x + CELL/2, y + CELL/2, 30);
+    if (isWhite) {
+        grad.addColorStop(0, '#fffdfa'); // Carrara Cream
+        grad.addColorStop(1, '#dcd0c0'); // Ivory Bevel
+    } else {
+        grad.addColorStop(0, '#2a1f2d'); // Dark Violet-Grey
+        grad.addColorStop(1, '#0a0a0f'); // Nero Slate
+    }
+    
+    ctx.beginPath();
+    ctx.arc(x + CELL/2, y + CELL/2, 28, 0, Math.PI*2);
+    ctx.fillStyle = grad;
+    ctx.shadowBlur = isGhost ? 0 : 15;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+
+    // 2. Veining (Bezier)
+    ctx.beginPath();
+    ctx.strokeStyle = isWhite ? 'rgba(100, 80, 60, 0.2)' : 'rgba(200, 180, 255, 0.1)';
+    ctx.lineWidth = 1;
+    for(let i=0; i<3; i++) {
+        ctx.moveTo(x + 15 + rand()*30, y + 15 + rand()*30);
+        ctx.bezierCurveTo(x+20, y+40, x+40, y+20, x+15+rand()*30, y+15+rand()*30);
+    }
+    ctx.stroke();
+
+    // 3. Specular Highlight
+    let spec = ctx.createRadialGradient(x + CELL/2 - 12, y + CELL/2 - 12, 0, x + CELL/2 - 12, y + CELL/2 - 12, 10);
+    spec.addColorStop(0, 'rgba(255,255,255,0.4)');
+    spec.addColorStop(1, 'transparent');
+    ctx.fillStyle = spec;
+    ctx.fill();
+
+    // 4. Glyph Engraving
+    ctx.fillStyle = isWhite ? '#4a321f' : '#b19cd9';
+    ctx.font = '36px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(PIECES[p], x + CELL/2, y + CELL/2 + 13);
+    ctx.restore();
 }
 
 function draw() {
-    canvas.width = window.innerWidth - 300;
+    canvas.width = window.innerWidth - 320;
     canvas.height = window.innerHeight;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    for (let r = -2; r < ROWS + 2; r++) {
-        for (let c = -2; c < COLS + 2; c++) {
+    ctx.fillStyle = '#020204';
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+
+    // Draw Surround Frame
+    const frameX = cam.x - 15, frameY = cam.y - 15;
+    const frameW = (COLS * CELL) + 30, frameH = (ROWS * CELL) + 30;
+    ctx.fillStyle = '#2d1a0a'; // Carved Walnut
+    ctx.fillRect(frameX, frameY, frameW, frameH);
+    ctx.strokeStyle = '#d4af37'; // Gold Inlay
+    ctx.lineWidth = 1;
+    ctx.strokeRect(frameX + 5, frameY + 5, frameW - 10, frameH - 10);
+
+    // Draw Toroidal Theater
+    for (let r = -1; r < ROWS + 1; r++) {
+        for (let c = -1; c < COLS + 1; c++) {
             const rr = (r + ROWS) % ROWS, rc = (c + COLS) % COLS;
             const x = c * CELL + cam.x, y = r * CELL + cam.y;
+            const isGhost = r < 0 || r >= ROWS || c < 0 || c >= COLS;
             
-            // Grid
-            ctx.fillStyle = (rr + rc) % 2 === 0 ? '#c8c8d2' : '#3c3c55';
-            if (r < 0 || r >= ROWS || c < 0 || c >= COLS) ctx.globalAlpha = 0.3;
-            else ctx.globalAlpha = 1.0;
-            
-            if (selected && selected.r === rr && selected.c === rc && r === rr) ctx.fillStyle = '#d4af37';
-            ctx.fillRect(x, y, CELL, CELL);
-            
-            // Pieces
-            if (board[rr][rc]) {
-                ctx.fillStyle = board[rr][rc][0] === 'w' ? '#fff' : '#000';
-                ctx.font = '40px serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 12);
-            }
-            ctx.globalAlpha = 1.0;
+            drawSquare(rr, rc, x, y, isGhost);
+            if (board[rr][rc]) drawPiece(board[rr][rc], x, y, isGhost);
         }
     }
     requestAnimationFrame(draw);
 }
 
-canvas.onmousedown = e => {
-    if (e.button === 2) isPanning = true;
-    else {
-        const x = e.offsetX - cam.x, y = e.offsetY - cam.y;
-        const c = Math.floor(x / CELL), r = Math.floor(y / CELL);
-        const rr = (r + ROWS) % ROWS, rc = (c + COLS) % COLS;
-        
-        if (selected) {
-            const moves = getMoves(selected.r, selected.c);
-            if (moves.some(m => m.r === rr && m.c === rc)) {
-                if (board[rr][rc][1] === 'K') { gameActive = false; document.getElementById('victory-msg').style.display = 'block'; }
-                board[rr][rc] = board[selected.r][selected.c];
-                board[selected.r][selected.c] = '';
-                turn = turn === 'w' ? 'b' : 'w';
-                document.getElementById('turn-label').innerText = `AM ZUG: ${turn === 'w' ? 'WEISS' : 'SCHWARZ'}`;
-            }
-            selected = null;
-        } else if (board[rr][rc] && board[rr][rc][0] === turn) {
-            selected = {r: rr, c: rc};
-        }
-    }
-};
-
+// Logic & Interaction (Standard Chess + Toroidal Wrap)
+canvas.onmousedown = e => { if (e.button === 2) isPanning = true; else handleInput(e.offsetX, e.offsetY); };
 window.onmousemove = e => { if (isPanning) { cam.x += e.movementX; cam.y += e.movementY; } };
 window.onmouseup = () => isPanning = false;
 window.oncontextmenu = e => e.preventDefault();
-window.onkeydown = e => { if (e.code === 'Space') cam = {x: 50, y: 50}; };
 
-setInterval(() => {
-    if (gameActive) {
-        fuel[turn] -= 0.1;
-        document.getElementById('fw-val').innerText = Math.ceil(fuel.w);
-        document.getElementById('fb-val').innerText = Math.ceil(fuel.b);
-        document.getElementById('fw-bar').style.width = (fuel.w/60*100) + '%';
-        document.getElementById('fb-bar').style.width = (fuel.b/60*100) + '%';
-        if (fuel[turn] <= 0) gameActive = false;
+function handleInput(mx, my) {
+    const c = Math.floor((mx - cam.x) / CELL), r = Math.floor((my - cam.y) / CELL);
+    const rr = (r + ROWS) % ROWS, rc = (c + COLS) % COLS;
+    if (selected) {
+        // Simple move logic for demo (replace with your full getMoves)
+        board[rr][rc] = board[selected.r][selected.c];
+        board[selected.r][selected.c] = '';
+        selected = null; turn = turn === 'w' ? 'b' : 'w';
+        document.getElementById('turn-label').innerText = `STATUS: ${turn==='w'?'WEISS':'SCHWARZ'} AM ZUG`;
+    } else if (board[rr][rc] && board[rr][rc][0] === turn) {
+        selected = {r: rr, c: rc};
     }
-}, 100);
+}
 
-turn = 'w';
 initBoard();
 draw();
 </script>

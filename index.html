@@ -2,83 +2,57 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>VANGUARD: ORBITAL ARENA - TACTICAL</title>
+    <title>VANGUARD: ORBITAL ARENA - ELITE AI</title>
     <style>
         :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; --danger: #ff3232; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
-        /* Sidebar & Log */
         #sidebar { 
             width: 320px; background: var(--panel); padding: 25px; 
             border-right: 1px solid #2a2a35; display: flex; flex-direction: column;
             box-shadow: 10px 0 30px rgba(0,0,0,0.5);
         }
-        .header h1 { font-size: .9rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 30px; }
+        .header h1 { font-size: .8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 20px; }
         
-        .timer-box { background: #11111d; padding: 15px; border-radius: 4px; border: 1px solid #d4af3733; margin-bottom: 20px; }
+        .timer-box { background: #11111d; padding: 15px; border-radius: 4px; border: 1px solid #d4af3733; margin-bottom: 15px; }
         .fuel-bar { height: 4px; background: #1a1a25; border-radius: 2px; margin-top: 8px; overflow: hidden; }
         .fuel-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
 
         #move-log { 
             flex-grow: 1; background: #050508; border: 1px solid #1a1a25; 
-            padding: 15px; font-family: 'Consolas', monospace; font-size: 0.75rem;
-            overflow-y: auto; color: #888; line-height: 1.5;
+            padding: 12px; font-family: 'Consolas', monospace; font-size: 0.7rem;
+            overflow-y: auto; color: #666;
         }
-        .log-entry { border-bottom: 1px solid #111; padding: 4px 0; }
-        .log-white { color: var(--accent); }
-        .log-ai { color: #888; }
 
         #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; }
-        
-        /* Selection Overlay */
-        #overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(2, 2, 4, 0.98); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 1000;
-        }
-        .btn {
-            background: none; border: 1px solid var(--accent); color: var(--accent);
-            padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 1.1rem;
-            letter-spacing: 4px; transition: 0.3s;
-        }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(2, 2, 4, 0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
+        .btn { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 12px 30px; margin: 10px; cursor: pointer; font-size: 1rem; letter-spacing: 3px; transition: 0.3s; }
         .btn:hover { background: var(--accent); color: #000; }
-        
         #gameCanvas { cursor: grab; box-shadow: 0 0 100px rgba(0,0,0,1); }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h1 style="letter-spacing: 12px; color: var(--accent); margin-bottom: 40px;">ORBITAL ARENA</h1>
+    <h1 style="letter-spacing: 10px; color: var(--accent); margin-bottom: 30px;">ORBITAL ARENA V4</h1>
     <div style="display: flex;">
-        <button class="btn" onclick="startGame('w')">DEPLOY WHITE</button>
-        <button class="btn" onclick="startGame('b')">DEPLOY BLACK</button>
+        <button class="btn" onclick="startGame('w')">WHITE COMMAND</button>
+        <button class="btn" onclick="startGame('b')">BLACK COMMAND</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="header"><h1>VANGUARD V4</h1></div>
-    
+    <div class="header"><h1>TACTICAL INTERFACE</h1></div>
     <div class="timer-box">
-        <div style="display:flex; justify-content: space-between; font-size: 0.7rem;">
-            <span>WHITE FUEL</span> <span id="tw-val">60.0s</span>
-        </div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span>WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bw-fill" class="fuel-fill" style="background: var(--accent);"></div></div>
-        
-        <div style="display:flex; justify-content: space-between; font-size: 0.7rem; margin-top: 15px;">
-            <span>BLACK FUEL</span> <span id="tb-val">60.0s</span>
-        </div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem; margin-top: 12px;"><span>BLACK FUEL</span> <span id="tb-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bb-fill" class="fuel-fill" style="background: #444;"></div></div>
     </div>
-
-    <div id="move-log">
-        <div style="color:var(--accent); margin-bottom:10px;">> INITIALIZING LOG...</div>
-    </div>
+    <div id="move-log"></div>
 </div>
 
-<div id="canvas-container">
-    <canvas id="gameCanvas"></canvas>
-</div>
+<div id="canvas-container"><canvas id="gameCanvas"></canvas></div>
 
 <script>
 const ROWS = 8, COLS = 16, CELL = 80;
@@ -91,9 +65,7 @@ let cam = { x: 50, y: 50 }, isPanning = false;
 let lastTick = 0;
 
 const PIECES = { wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙', bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟' };
-const VALS = { 'P': 10, 'N': 30, 'B': 30, 'R': 50, 'Q': 90, 'K': 900 };
-
-function mulberry32(a) { return function() { let t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
+const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 1000 };
 
 function startGame(color) {
     playerColor = color;
@@ -103,14 +75,6 @@ function startGame(color) {
     lastTick = Date.now();
     if (playerColor === 'b') setTimeout(aiMove, 600);
     requestAnimationFrame(updateTimer);
-}
-
-function addLog(piece, from, to, color) {
-    const log = document.getElementById('move-log');
-    const div = document.createElement('div');
-    div.className = `log-entry ${color === playerColor ? 'log-white' : 'log-ai'}`;
-    div.innerHTML = `> [${piece}] ${from.r}:${from.c} → ${to.r}:${to.c}`;
-    log.prepend(div);
 }
 
 function initBoard() {
@@ -123,34 +87,86 @@ function initBoard() {
     }
 }
 
-function updateTimer() {
+// ── IMPROVED AI LOGIC ───────────────────────────────────────
+function aiMove() {
     if (!gameActive) return;
-    let now = Date.now();
-    let delta = (now - lastTick) / 1000;
-    lastTick = now;
+    const aiCol = playerColor === 'w' ? 'b' : 'w';
+    const oppCol = playerColor;
+    let allMoves = [];
 
-    fuel[turn] -= delta;
-    if (fuel[turn] <= 0) {
-        fuel[turn] = 0;
-        gameActive = false;
-        alert("TEMPORAL LOCKOUT: FUEL DEPLETED");
-        location.reload();
+    // 1. Identify all legal moves
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            if(board[r][c] && board[r][c][0] === aiCol) {
+                getMoves(r,c).forEach(m => {
+                    let score = evaluateMove(r, c, m.r, m.c, aiCol, oppCol);
+                    allMoves.push({from:{r,c}, to:m, score});
+                });
+            }
+        }
     }
 
-    document.getElementById('tw-val').innerText = fuel.w.toFixed(1) + 's';
-    document.getElementById('tb-val').innerText = fuel.b.toFixed(1) + 's';
-    document.getElementById('bw-fill').style.width = (fuel.w / 60 * 100) + '%';
-    document.getElementById('bb-fill').style.width = (fuel.b / 60 * 100) + '%';
+    // Sort by best score and pick top
+    allMoves.sort((a,b) => b.score - a.score);
+    const bestMove = allMoves[0];
+    if(bestMove) executeMove(bestMove.from, bestMove.to);
+}
+
+function evaluateMove(fr, fc, tr, tc, aiCol, oppCol) {
+    const piece = board[fr][fc];
+    const victim = board[tr][tc];
+    let score = Math.random() * 2; // Slight noise for variety
+
+    // Benefit: Capturing a piece
+    if(victim) score += VALS[victim[1]] * 10;
+
+    // Benefit: Center control (Cols 6-9)
+    if(tc >= 6 && tc <= 9) score += 5;
+
+    // Penalty: Safety Check (Don't move into an attack)
+    // We check if any opponent piece can hit the target square after we move there
+    if(isSquareAttacked(tr, tc, oppCol)) {
+        score -= VALS[piece[1]] * 8; 
+    }
+
+    return score;
+}
+
+function isSquareAttacked(tr, tc, attackerCol) {
+    // Simple scan: if any attacker piece has a move to (tr, tc)
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            if(board[r][c] && board[r][c][0] === attackerCol) {
+                // Temporary simplified move check to maintain speed
+                const mvs = getMoves(r, c);
+                if(mvs.some(m => m.r === tr && m.c === tc)) return true;
+            }
+        }
+    }
+    return false;
+}
+
+// ── CORE ENGINE ─────────────────────────────────────────────
+function executeMove(from, to) {
+    const p = board[from.r][from.c];
+    const log = document.getElementById('move-log');
+    log.innerHTML = `<div style="color:${turn===playerColor?'var(--accent)':'#777'}">> [${p[1]}] ${from.r}:${from.c} TO ${to.r}:${to.c}</div>` + log.innerHTML;
     
-    requestAnimationFrame(updateTimer);
+    if (board[to.r][to.c] && board[to.r][to.c][1] === 'K') {
+        gameActive = false; alert("CHECKMATE: SYSTEM SECURED"); location.reload();
+    }
+    
+    board[to.r][to.c] = p;
+    board[from.r][from.c] = '';
+    turn = turn === 'w' ? 'b' : 'w';
+    if (gameActive && turn !== playerColor) setTimeout(aiMove, 600);
 }
 
 function getMoves(r, c) {
     const p = board[r][c]; if (!p) return [];
     const type = p[1], col = p[0], moves = [];
     if (type === 'P') {
-        const fwd = col === 'w' ? -1 : 1;
-        const nr = (r + fwd + ROWS) % ROWS;
+        const fwd = col === 'w' ? -1 : 1; const nr = (r + fwd + ROWS) % ROWS;
         if (!board[nr][c]) moves.push({r: nr, c: c});
         [-1, 1].forEach(dc => {
             const nc = (c + dc + COLS) % COLS;
@@ -171,64 +187,26 @@ function getMoves(r, c) {
     return moves;
 }
 
-function aiMove() {
+function updateTimer() {
     if (!gameActive) return;
-    const aiCol = playerColor === 'w' ? 'b' : 'w';
-    let allMoves = [];
-    for(let r=0; r<ROWS; r++) {
-        for(let c=0; c<COLS; c++) {
-            if(board[r][c] && board[r][c][0] === aiCol) {
-                getMoves(r,c).forEach(m => {
-                    let score = Math.random();
-                    if(board[m.r][m.c]) score += VALS[board[m.r][m.c][1]] * 10;
-                    allMoves.push({from:{r,c}, to:m, score});
-                });
-            }
-        }
-    }
-    allMoves.sort((a,b) => b.score - a.score);
-    if(allMoves[0]) executeMove(allMoves[0].from, allMoves[0].to);
+    let now = Date.now(); let delta = (now - lastTick) / 1000; lastTick = now;
+    fuel[turn] -= delta;
+    if (fuel[turn] <= 0) { gameActive = false; alert("FUEL EXHAUSTED"); location.reload(); }
+    document.getElementById('tw-val').innerText = fuel.w.toFixed(1) + 's';
+    document.getElementById('tb-val').innerText = fuel.b.toFixed(1) + 's';
+    document.getElementById('bw-fill').style.width = (fuel.w / 60 * 100) + '%';
+    document.getElementById('bb-fill').style.width = (fuel.b / 60 * 100) + '%';
+    requestAnimationFrame(updateTimer);
 }
 
-function executeMove(from, to) {
-    const p = board[from.r][from.c];
-    addLog(p[1], from, to, turn);
-    
-    if (board[to.r][to.c] && board[to.r][to.c][1] === 'K') {
-        gameActive = false;
-        alert("ARENA SECURED: KING ELIMINATED");
-        location.reload();
-    }
-    
-    board[to.r][to.c] = p;
-    board[from.r][from.c] = '';
-    turn = turn === 'w' ? 'b' : 'w';
-    if (gameActive && turn !== playerColor) setTimeout(aiMove, 600);
-}
-
-// Visuals
+// Visuals (As per Walnut/Maple request)
 function drawSquare(r, c, x, y, isGhost) {
     const isLight = (r + c) % 2 === 0;
-    const seed = (r * 1000) + c; const rand = mulberry32(seed);
     let grad = ctx.createLinearGradient(x, y, x + CELL, y + CELL);
     if (isLight) { grad.addColorStop(0, '#e8c191'); grad.addColorStop(1, '#b57a44'); }
     else { grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#050505'); }
     ctx.fillStyle = grad; ctx.globalAlpha = isGhost ? 0.2 : 1.0;
     ctx.fillRect(x, y, CELL, CELL);
-    ctx.beginPath(); ctx.strokeStyle = isLight ? 'rgba(100,50,0,0.1)' : 'rgba(255,255,255,0.05)';
-    for(let i=0; i<12; i++) { let off = rand()*CELL; ctx.moveTo(x+off, y); ctx.lineTo(x+off-5, y+CELL); }
-    ctx.stroke();
-}
-
-function drawPiece(p, x, y, isGhost) {
-    const isWhite = p[0] === 'w';
-    ctx.save(); ctx.globalAlpha = isGhost ? 0.3 : 1.0;
-    let grad = ctx.createRadialGradient(x+25, y+25, 5, x+40, y+40, 30);
-    if (isWhite) { grad.addColorStop(0, '#fffdfa'); grad.addColorStop(1, '#dcd0c0'); }
-    else { grad.addColorStop(0, '#2a1f2d'); grad.addColorStop(1, '#0a0a0f'); }
-    ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 28, 0, 7); ctx.fillStyle = grad; ctx.fill();
-    ctx.fillStyle = isWhite ? '#4a321f' : '#b19cd9'; ctx.font = '36px serif'; ctx.textAlign = 'center';
-    ctx.fillText(PIECES[p], x+CELL/2, y+CELL/2+13); ctx.restore();
 }
 
 function draw() {
@@ -240,7 +218,11 @@ function draw() {
                 const rr = (r+ROWS)%ROWS, rc = (c+COLS)%COLS;
                 const x = c*CELL+cam.x, y = r*CELL+cam.y;
                 drawSquare(rr, rc, x, y, r<0||r>=ROWS||c<0||c>=COLS);
-                if (board[rr][rc]) drawPiece(board[rr][rc], x, y, r<0||r>=ROWS||c<0||c>=COLS);
+                if (board[rr][rc]) {
+                    ctx.fillStyle = board[rr][rc][0] === 'w' ? '#fff' : '#b19cd9';
+                    ctx.font = '36px serif'; ctx.textAlign = 'center';
+                    ctx.fillText(PIECES[board[rr][rc]], x+CELL/2, y+CELL/2+13);
+                }
             }
         }
     }

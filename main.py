@@ -2,7 +2,7 @@ import pygame
 import random
 import asyncio
 
-# --- EINSTELLUNGEN ---
+# --- SETTINGS ---
 WIDTH, HEIGHT = 1300, 700
 BOARD_ROWS, BOARD_COLS = 8, 16
 CELL_SIZE = 70
@@ -11,7 +11,7 @@ COLORS = {"bg": (8, 8, 18), "panel": (20, 20, 35), "text": (210, 210, 220)}
 WHITE_SQ, BLACK_SQ = (200, 200, 210), (60, 60, 85)
 GHOST_ALPHA = 90 
 
-# Startposition für die Kamera
+# Start position for the camera
 START_X, START_Y = 100, 70
 
 class OrbitalEngine:
@@ -32,18 +32,18 @@ class OrbitalEngine:
         self.last_update = pygame.time.get_ticks()
 
     def setup_board(self):
-        # Standard Bauernreihen
+        # 1. Place pawns on rows 0, 1 (Black) and 6, 7 (White)
         for c in range(BOARD_COLS):
-            self.board[1][c] = "bP"; self.board[6][c] = "wP"
+            self.board[0][c] = "bP" # Back row Black
+            self.board[1][c] = "bP" # Front row Black
+            self.board[6][c] = "wP" # Front row White
+            self.board[7][c] = "wP" # Back row White
         
-        # NEU: Zusätzliche Bauernreihe HINTER den Hauptstücken (Reihe 0 und 7)
-        for c in range(BOARD_COLS):
-            self.board[0][c] = "bP"; self.board[7][c] = "wP"
-            
-        # Hauptfiguren (überschreiben die Bauern auf den entsprechenden Feldern)
+        # 2. Place main pieces on row 0 and 7 (overwrites pawns in the first 8 columns)
         layout = ["R", "N", "B", "Q", "K", "B", "N", "R"]
         for i, p in enumerate(layout + layout):
-            self.board[0][i] = "b" + p; self.board[7][i] = "w" + p
+            self.board[0][i] = "b" + p
+            self.board[7][i] = "w" + p
 
     def get_moves(self, r, c):
         piece = self.board[r][c]
@@ -72,11 +72,14 @@ class OrbitalEngine:
                         break
         elif p_type == 'P':
             d = -1 if color == 'w' else 1
-            # Nur 1 Schritt vorwärts möglich (keine Doppelschritt-Logik)
-            if not self.board[(r + d) % BOARD_ROWS][c]: moves.append(((r + d) % BOARD_ROWS, c))
+            # Restriction removed: Pawns only move 1 step forward
+            if not self.board[(r + d) % BOARD_ROWS][c]: 
+                moves.append(((r + d) % BOARD_ROWS, c))
+            # Diagonal capture
             for side in [-1, 1]:
                 nr, nc = (r + d) % BOARD_ROWS, (c + side) % BOARD_COLS
-                if self.board[nr][nc] and self.board[nr][nc][0] != color: moves.append((nr, nc))
+                if self.board[nr][nc] and self.board[nr][nc][0] != color: 
+                    moves.append((nr, nc))
         return moves
 
     def execute_move(self, start, end):
@@ -127,7 +130,7 @@ class OrbitalEngine:
 async def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("Orbitales Schach")
+    pygame.display.set_caption("Orbitales Schach") # German Title
     game = OrbitalEngine()
     font = pygame.font.SysFont('Consolas', 20, True)
     clock = pygame.time.Clock()

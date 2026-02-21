@@ -212,18 +212,103 @@ function getMoves(r, c) {
     return moves;
 }
 
+<script>
+// ... (Keep existing setup, variables, and getMoves logic) ...
+
+/**
+ * REPLACED: New Heuristic AI Decision Controller
+ */
 function aiMove() {
     if (!gameActive) return;
     const aiCol = playerColor === 'w' ? 'b' : 'w';
-    let moves = [];
-    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
-        if(board[r][c] && board[r][c][0]===aiCol) {
-            getMoves(r,c).forEach(m => moves.push({from:{r,c}, to:m}));
+    const oppCol = playerColor;
+    let allMoves = [];
+
+    // 1. Scan the board for all AI pieces
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            if(board[r][c] && board[r][c][0] === aiCol) {
+                // 2. Find all legal moves for this piece
+                const potentialMoves = getMoves(r, c);
+                potentialMoves.forEach(m => {
+                    // 3. Score the move based on intelligence rules
+                    let score = evaluateMove(r, c, m.r, m.c, aiCol, oppCol);
+                    allMoves.push({from: {r, c}, to: m, score: score});
+                });
+            }
         }
     }
-    const move = moves[Math.floor(Math.random()*moves.length)];
-    if(move) executeMove(move.from, move.to);
+
+    // 4. Sort by highest score (Descending)
+    allMoves.sort((a, b) => b.score - a.score);
+
+    // 5. Execute the best move found
+    if(allMoves.length > 0) {
+        // If multiple moves have the same top score, pick between them randomly
+        const bestScore = allMoves[0].score;
+        const topMoves = allMoves.filter(m => m.score === bestScore);
+        const choice = topMoves[Math.floor(Math.random() * topMoves.length)];
+        
+        executeMove(choice.from, choice.to);
+    }
 }
+
+/**
+ * Logic Brain: Assigns a numeric value to a move
+ */
+function evaluateMove(fr, fc, tr, tc, aiCol, oppCol) {
+    const piece = board[fr][fc];
+    const victim = board[tr][tc];
+    const pieceType = piece[1];
+    
+    // Base score (slight randomness to prevent repetitive loops)
+    let score = Math.random() * 2; 
+
+    // CAPTURE VALUE: Prioritize taking your pieces
+    if (victim) {
+        const victimType = victim[1];
+        score += VALS[victimType] * 10;
+    }
+
+    // POSITIONAL VALUE: Reward control of the orbital center
+    if (tc >= 6 && tc <= 9) {
+        score += 8;
+    }
+
+    // SAFETY CHECK: Penalize moving into a square you can attack
+    // This prevents the AI from "donating" its Queen to a Pawn
+    if (isSquareAttacked(tr, tc, oppCol)) {
+        score -= VALS[pieceType] * 8;
+    }
+
+    // KING THREAT: Huge bonus if this move wins the game
+    if (victim && victim[1] === 'K') {
+        score += 10000;
+    }
+
+    return score;
+}
+
+/**
+ * Threat Matrix: Checks if a specific square is targeted by the opponent
+ */
+function isSquareAttacked(tr, tc, attackerCol) {
+    for(let r=0; r<ROWS; r++) {
+        for(let c=0; c<COLS; c++) {
+            if(board[r][c] && board[r][c][0] === attackerCol) {
+                // We use a simplified check here to keep the AI fast
+                const moves = getMoves(r, c);
+                for(let i=0; i<moves.length; i++) {
+                    if(moves[i].r === tr && moves[i].c === tc) return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// ... (Keep existing executeMove, draw, and input logic) ...
+</script>
 
 canvas.onmousedown = e => {
     if (!gameActive || turn !== playerColor) return;
@@ -241,5 +326,6 @@ draw();
 </script>
 </body>
 </html>
+
 
 

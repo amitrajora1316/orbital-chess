@@ -2,40 +2,33 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>VANGUARD: ORBITAL CHESS</title>
+    <title>VANGUARD: ORBITAL ARENA - MAX RANK</title>
     <style>
-        :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; }
+        :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; --danger: #ff3232; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        
         #sidebar { width: 320px; background: var(--panel); padding: 25px; border-right: 1px solid #2a2a35; display: flex; flex-direction: column; }
         .timer-box { background: #11111d; padding: 15px; border-radius: 4px; border: 1px solid #d4af3733; margin-bottom: 15px; }
         .fuel-bar { height: 4px; background: #1a1a25; margin-top: 8px; }
         .fuel-fill { height: 100%; transition: width 0.1s linear; }
-
-        /* Overlays */
-        #overlay, #victory-overlay { 
-            position: absolute; top:0; left:0; width:100%; height:100%; 
-            background: rgba(2,2,4,0.98); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 1000; text-align: center; 
-        }
+        #overlay, #victory-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(2,2,4,0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; text-align: center; }
         #victory-overlay { display: none; background: rgba(2,2,4,0.9); }
-        
         .btn { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 12px 30px; margin: 10px; cursor: pointer; letter-spacing: 3px; }
         .btn:hover { background: var(--accent); color: #000; }
         #move-log { flex-grow: 1; background: #050508; padding: 12px; font-family: monospace; font-size: 0.7rem; overflow-y: auto; color: #666; }
+        #check-warning { color: var(--danger); font-weight: bold; text-align: center; margin-bottom: 5px; visibility: hidden; }
     </style>
 </head>
 <body>
 
 <div id="overlay">
-    <h1 style="letter-spacing: 12px; color: var(--accent);">VANGUARD</h1>
+    <h1 style="letter-spacing: 12px; color: var(--accent);">VANGUARD V4</h1>
     <div id="lang-btns">
         <button class="btn" onclick="setLang('en')">ENGLISH</button>
         <button class="btn" onclick="setLang('de')">DEUTSCH</button>
     </div>
     <div id="side-selection" style="display:none;">
-        <button class="btn" id="btn-w" onclick="startGame('w')">WHITE (BOTTOM)</button>
-        <button class="btn" id="btn-b" onclick="startGame('b')">BLACK (BOTTOM)</button>
+        <button class="btn" id="btn-w" onclick="startGame('w')">WHITE</button>
+        <button class="btn" id="btn-b" onclick="startGame('b')">BLACK</button>
     </div>
 </div>
 
@@ -47,6 +40,7 @@
 
 <div id="sidebar">
     <h1 id="ui-title" style="font-size: .8rem; letter-spacing: 6px; color: var(--accent); text-align: center; margin-bottom: 20px;">TACTICAL HUB</h1>
+    <div id="check-warning">CHECK DETECTED</div>
     <div id="turn-prompt" style="color:var(--accent); text-align:center; margin-bottom:10px; font-weight:bold; display:none;">YOUR TURN</div>
     <div class="timer-box">
         <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span id="ui-wf">WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
@@ -60,83 +54,208 @@
 <canvas id="gameCanvas"></canvas>
 
 <script>
-// --- CONFIGURATION & GLOBALS ---
 const ROWS = 8, COLS = 16, CELL = 80;
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const PIECES = { wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙', bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟' };
-const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 1000 };
+const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 20000 };
+
+let curLang='en', board, turn='w', playerColor='w', selected=null, gameActive=false, validMoves=[];
+let fuel={w:60, b:60}, lastTick=0, cam={x:50, y:50};
+
 const TEXTS = {
-    en: { title: "TACTICAL HUB", wf: "WHITE FUEL", bf: "BLACK FUEL", btnW: "WHITE (BOTTOM)", btnB: "BLACK (BOTTOM)", turn: "YOUR TURN", win: "ARENA SECURED", loss: "CRITICAL FAILURE", restart: "SYSTEM REBOOT" },
-    de: { title: "TAKTIK-ZENTRALE", wf: "WEISS ENERGIE", bf: "SCHWARZ ENERGIE", btnW: "WEISS (UNTEN)", btnB: "SCHWARZ (UNTEN)", turn: "DU BIST DRAN", win: "ARENA GESICHERT", loss: "SYSTEMFEHLER", restart: "SYSTEM-NEUSTART" }
+    en: { title:"TACTICAL HUB", wf:"WHITE FUEL", bf:"BLACK FUEL", btnW:"WHITE (BOTTOM)", btnB:"BLACK (BOTTOM)", turn:"YOUR TURN", win:"ARENA SECURED", loss:"CRITICAL FAILURE", restart:"SYSTEM REBOOT", check:"CHECK" },
+    de: { title:"TAKTIK-ZENTRALE", wf:"WEISS ENERGIE", bf:"SCHWARZ ENERGIE", btnW:"WEISS (UNTEN)", btnB:"SCHWARZ (UNTEN)", turn:"DU BIST DRAN", win:"ARENA GESICHERT", loss:"SYSTEMFEHLER", restart:"SYSTEM-NEUSTART", check:"SCHACH" }
 };
 
-let curLang = 'en', board, turn = 'w', playerColor = 'w', selected = null, gameActive = false, validMoves = [];
-let fuel = { w: 60, b: 60 }, lastTick = 0, cam = { x: 50, y: 50 };
-
-// --- MENU & LANGUAGE LOGIC ---
 function setLang(l) {
-    curLang = l;
-    const t = TEXTS[l];
+    curLang = l; const t = TEXTS[l];
     document.getElementById('ui-title').innerText = t.title;
     document.getElementById('ui-wf').innerText = t.wf;
     document.getElementById('ui-bf').innerText = t.bf;
     document.getElementById('btn-w').innerText = t.btnW;
     document.getElementById('btn-b').innerText = t.btnB;
-    document.querySelector('#victory-overlay .btn').innerText = t.restart;
     document.getElementById('lang-btns').style.display = 'none';
     document.getElementById('side-selection').style.display = 'block';
 }
 
 function startGame(side) {
-    playerColor = side;
-    document.getElementById('overlay').style.display = 'none';
-    gameActive = true;
-    initBoard();
-    lastTick = Date.now();
-    updateHUD();
-    if (playerColor === 'b') setTimeout(aiMove, 800);
+    playerColor = side; document.getElementById('overlay').style.display = 'none';
+    gameActive = true; initBoard(); lastTick = Date.now();
+    updateHUD(); if(playerColor==='b') setTimeout(aiMove, 800);
     requestAnimationFrame(updateTimer);
 }
 
-// --- CORE ENGINE ---
 function initBoard() {
     board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
     const layout = ['R','N','B','Q','K','B','N','R'];
-    for (let i = 0; i < 8; i++) {
+    for(let i=0; i<8; i++) {
         let col = i + 4;
-        board[0][col] = 'bP'; board[1][col] = 'b' + layout[i]; board[2][col] = 'bP';
-        board[7][col] = 'wP'; board[6][col] = 'w' + layout[i]; board[5][col] = 'wP';
+        board[0][col]='bP'; board[1][col]='b'+layout[i]; board[2][col]='bP';
+        board[7][col]='wP'; board[6][col]='w'+layout[i]; board[5][col]='wP';
     }
 }
 
-function endGame(winner, reason) {
-    gameActive = false;
-    const t = TEXTS[curLang];
-    document.getElementById('victory-overlay').style.display = 'flex';
-    document.getElementById('victory-title').innerText = (winner === playerColor) ? t.win : t.loss;
-    document.getElementById('victory-msg').innerText = reason;
+// --- LEGALITY & CHECKMATE ---
+function getMoves(r, c, ignoreCheck = false) {
+    const p = board[r][c]; if(!p) return [];
+    const type=p[1], col=p[0], moves=[];
+    
+    if(type === 'P') {
+        const fwd = col==='w' ? -1 : 1;
+        const nr = (r+fwd+ROWS)%ROWS;
+        if(!board[nr][c]) moves.push({r:nr, c:c});
+        [-1,1].forEach(dc => {
+            const nc = (c+dc+COLS)%COLS;
+            if(board[nr][nc] && board[nr][nc][0]!==col) moves.push({r:nr, c:nc});
+        });
+    } else {
+        const dirs = {'R':[[0,1],[0,-1],[1,0],[-1,0]],'B':[[1,1],[1,-1],[-1,1],[-1,-1]],'Q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],'N':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]}[type];
+        const lim = (type==='K'||type==='N')?2:16;
+        dirs.forEach(([dr, dc]) => {
+            for(let i=1; i<lim; i++){
+                const nr=(r+dr*i+ROWS)%ROWS, nc=(c+dc*i+COLS)%COLS;
+                if(board[nr][nc] && board[nr][nc][0]===col) break;
+                moves.push({r:nr, c:nc});
+                if(board[nr][nc]) break;
+            }
+        });
+    }
+
+    if(ignoreCheck) return moves;
+
+    // Filter moves that leave King in Check
+    return moves.filter(m => {
+        const temp = board[m.r][m.c];
+        board[m.r][m.c] = p; board[r][c] = '';
+        const safe = !isCheck(col);
+        board[r][c] = p; board[m.r][m.c] = temp;
+        return safe;
+    });
+}
+
+function isCheck(color) {
+    let kr, kc;
+    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+        if(board[r][c] === color+'K') { kr=r; kc=c; break; }
+    
+    const opp = color==='w'?'b':'w';
+    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+        if(board[r][c] && board[r][c][0]===opp) {
+            const moves = getMoves(r, c, true);
+            if(moves.some(m => m.r===kr && m.c===kc)) return true;
+        }
+    }
+    return false;
+}
+
+// --- MAX AI ---
+function aiMove() {
+    if(!gameActive) return;
+    const aiCol = playerColor==='w'?'b':'w';
+    let moves = [];
+    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+        if(board[r][c] && board[r][c][0]===aiCol) {
+            getMoves(r, c).forEach(m => {
+                let score = Math.random() * 2;
+                const victim = board[m.r][m.c];
+                if(victim) score += VALS[victim[1]] * 10;
+                // Center Bonus
+                if(m.c >= 6 && m.c <= 9) score += 5;
+                moves.push({from:{r,c}, to:m, score});
+            });
+        }
+    }
+    if(moves.length === 0) return endGame(playerColor, "Checkmate / Stalemate");
+    moves.sort((a,b) => b.score - a.score);
+    executeMove(moves[0].from, moves[0].to);
 }
 
 function executeMove(from, to) {
-    if (!gameActive) return;
-    const p = board[from.r][from.c];
-    if (board[to.r][to.c] && board[to.r][to.c][1] === 'K') {
-        board[to.r][to.c] = p; board[from.r][from.c] = '';
-        endGame(turn, "Target King Neutralized"); return;
+    board[to.r][to.c] = board[from.r][from.c]; board[from.r][from.c] = '';
+    fuel[turn] = Math.min(60, fuel[turn]+10);
+    turn = turn==='w'?'b':'w';
+    
+    if(isCheck(turn)) {
+        let hasMoves = false;
+        for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) 
+            if(board[r][c] && board[r][c][0]===turn && getMoves(r,c).length > 0) hasMoves = true;
+        
+        if(!hasMoves) return endGame(turn==='w'?'b':'w', "CHECKMATE");
     }
-    fuel[turn] = Math.min(60, fuel[turn] + 10);
-    board[to.r][to.c] = p; board[from.r][from.c] = '';
-    document.getElementById('move-log').innerHTML = `<div>> ${p[1]} ${from.r}:${from.c} to ${to.r}:${to.c}</div>` + document.getElementById('move-log').innerHTML;
-    turn = turn === 'w' ? 'b' : 'w';
+
     updateHUD();
-    if (gameActive && turn !== playerColor) setTimeout(aiMove, 600);
+    if(gameActive && turn !== playerColor) setTimeout(aiMove, 600);
 }
 
-// --- TACTICAL AI ---
-function aiMove() {
-    if (!gameActive) return;
-    const aiCol = playerColor === 'w' ? 'b' : 'w';
-    let moves = [];
-    for(let r=0; r<ROWS; r++) {
-        for(let c=0; c<COLS; c++)
+function updateHUD() {
+    const prompt = document.getElementById('turn-prompt');
+    prompt.style.display = (turn === playerColor) ? 'block' : 'none';
+    prompt.innerText = TEXTS[curLang].turn;
+    document.getElementById('check-warning').style.visibility = isCheck(turn) ? 'visible' : 'hidden';
+    document.getElementById('check-warning').innerText = TEXTS[curLang].check;
+}
+
+function endGame(winner, reason) {
+    gameActive = false; document.getElementById('victory-overlay').style.display='flex';
+    document.getElementById('victory-title').innerText = winner===playerColor ? TEXTS[curLang].win : TEXTS[curLang].loss;
+    document.getElementById('victory-msg').innerText = reason;
+}
+
+function getDisplayCoords(r, c) {
+    if(playerColor==='b') return {dr:7-r, dc:15-c};
+    return {dr:r, dc:c};
+}
+
+function getActualCoords(dr, dc) {
+    if(playerColor==='b') return {r:7-dr, c:15-dc};
+    return {r:dr, c:dc};
+}
+
+function draw() {
+    canvas.width = window.innerWidth-320; canvas.height = window.innerHeight;
+    ctx.fillStyle = '#000'; ctx.fillRect(0,0, canvas.width, canvas.height);
+    if(!board) { requestAnimationFrame(draw); return; }
+    for(let r=0; r<ROWS; r++) for(let c=0; c<COLS; c++) {
+        const v = getDisplayCoords(r, c); const x = v.dc*CELL+cam.x, y = v.dr*CELL+cam.y;
+        ctx.fillStyle = (r+c)%2===0 ? '#b57a44' : '#1a1a1a';
+        ctx.fillRect(x,y,CELL,CELL);
+        if(validMoves.some(m => m.r===r && m.c===c)) {
+            ctx.fillStyle = board[r][c] ? 'rgba(255,50,50,0.4)' : 'rgba(212,175,55,0.3)';
+            ctx.beginPath(); ctx.arc(x+CELL/2, y+CELL/2, 10, 0, Math.PI*2); ctx.fill();
+        }
+        if(board[r][c]) {
+            ctx.fillStyle = board[r][c][0]==='w' ? '#fff' : '#b19cd9';
+            ctx.font = '36px serif'; ctx.textAlign = 'center';
+            ctx.fillText(PIECES[board[r][c]], x+CELL/2, y+CELL/2+13);
+        }
+    }
+    requestAnimationFrame(draw);
+}
+
+function updateTimer() {
+    if(!gameActive) return;
+    let now=Date.now(), delta=(now-lastTick)/1000; lastTick=now;
+    fuel[turn] -= delta;
+    if(fuel[turn] <= 0) endGame(turn==='w'?'b':'w', "FUEL EXHAUSTED");
+    document.getElementById('tw-val').innerText = fuel.w.toFixed(1)+'s';
+    document.getElementById('tb-val').innerText = fuel.b.toFixed(1)+'s';
+    document.getElementById('bw-fill').style.width = (fuel.w/60*100)+'%';
+    document.getElementById('bb-fill').style.width = (fuel.b/60*100)+'%';
+    requestAnimationFrame(updateTimer);
+}
+
+canvas.onmousedown = e => {
+    if(!gameActive || turn!==playerColor) return;
+    const {r,c} = getActualCoords(Math.floor((e.offsetX-cam.x)/CELL), Math.floor((e.offsetY-cam.y)/CELL));
+    if(selected) {
+        if(validMoves.some(m => m.r===r && m.c===c)) executeMove(selected, {r,c});
+        selected=null; validMoves=[];
+    } else if(board[r][c] && board[r][c][0]===playerColor) {
+        selected={r,c}; validMoves=getMoves(r,c);
+    }
+};
+draw();
+</script>
+</body>
+</html>

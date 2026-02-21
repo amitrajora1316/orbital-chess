@@ -1,200 +1,815 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>VANGUARD: ORBITAL ARENA - ADVANCED AI</title>
-    <style>
-        :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; }
-        body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 320px; background: var(--panel); padding: 25px; border-right: 1px solid #2a2a35; z-index: 10; }
-        #canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; position: relative; background: #000; }
-        #overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; }
-        .btn { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 1.1rem; letter-spacing: 3px; transition: 0.3s; }
-        .btn:hover { background: var(--accent); color: #000; }
-        #gameCanvas { box-shadow: 0 0 50px rgba(0,0,0,0.8); }
-    </style>
+<meta charset="UTF-8">
+<title>Orbital Arena | Vanguard V4</title>
+<style>
+    :root {
+        --bg:     #020204;
+        --panel:  #0a0a0f;
+        --accent: #d4af37;
+        --border: #2a2a35;
+        --grey:   #888;
+        --light:  #bbb;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        background: var(--bg);
+        color: #fff;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        height: 100vh; overflow: hidden;
+        display: flex; user-select: none;
+    }
+
+    /* ── SIDEBAR ──────────────────────────────────── */
+    #sidebar {
+        width: 340px; min-width: 340px;
+        background: var(--panel);
+        display: flex; flex-direction: column;
+        padding: 25px;
+        border-right: 1px solid var(--border);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.5);
+        overflow: hidden;
+    }
+    .header h1 {
+        font-size: .8rem; letter-spacing: 6px; color: var(--accent);
+        text-align: center; margin-bottom: 20px;
+        border-bottom: 1px solid #333; padding-bottom: 15px;
+        text-transform: uppercase;
+    }
+    #commander-badge {
+        font-size: .65rem; letter-spacing: 3px; color: var(--grey);
+        text-align: center; text-transform: uppercase; margin-bottom: 14px;
+    }
+    #commander-badge span { color: var(--accent); }
+
+    #game-info {
+        background: #12121c; padding: 20px; border-radius: 8px;
+        text-align: center; border: 1px solid var(--border); margin-bottom: 16px;
+    }
+    .turn-label {
+        font-size: .75rem; color: var(--grey);
+        text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px;
+    }
+    #timer-box {
+        font-size: 2.5rem; font-weight: 900; color: var(--accent);
+        font-family: 'Courier New', monospace;
+        text-shadow: 0 0 10px rgba(212,175,55,.3); transition: color .3s;
+    }
+    #timer-box.danger {
+        color: #ff3333; text-shadow: 0 0 14px rgba(255,51,51,.5);
+        animation: blink .5s infinite alternate;
+    }
+    @keyframes blink { to { opacity: .5; } }
+
+    .fuel-section { margin-bottom: 16px; }
+    .fuel-row     { margin-bottom: 9px; }
+    .fuel-meta {
+        display: flex; justify-content: space-between;
+        font-size: .65rem; letter-spacing: 1px;
+        text-transform: uppercase; color: var(--grey); margin-bottom: 4px;
+    }
+    .fuel-meta.active { color: var(--accent); }
+    .fuel-meta .fval  { font-family: 'Courier New', monospace; }
+    .fuel-track {
+        height: 5px; background: #1a1a28; border-radius: 3px;
+        overflow: hidden; border: 1px solid #1e1e2e;
+    }
+    .fuel-fill {
+        height: 100%; background: #4a4220;
+        border-radius: 3px; transition: width .4s, background .3s;
+    }
+    .fuel-fill.active { background: var(--accent); }
+    .fuel-fill.danger { background: #ff3333; }
+
+    #rules-primer {
+        background: rgba(255,255,255,.03); padding: 12px 15px;
+        border-radius: 8px; font-size: .75rem; line-height: 1.65;
+        color: var(--light); margin-bottom: 14px; border: 1px solid #222;
+    }
+    #rules-primer b { color: var(--accent); font-weight: 600; }
+
+    #gallery { border-top: 1px solid #222; padding-top: 16px; margin-bottom: 14px; }
+    .gallery-label {
+        font-size: .65rem; color: var(--accent); letter-spacing: 2px;
+        margin-bottom: 8px; text-transform: uppercase; opacity: .7;
+    }
+    .captured-row {
+        display: flex; flex-wrap: wrap; gap: 6px;
+        min-height: 38px; margin-bottom: 14px;
+        background: rgba(0,0,0,.3); padding: 8px; border-radius: 4px;
+    }
+    .captured-piece {
+        font-size: 1.5rem;
+        filter: drop-shadow(0 0 5px rgba(255,255,255,.2));
+        line-height: 1;
+    }
+
+    #log-wrap {
+        flex: 1; border-top: 1px solid #222; padding-top: 12px;
+        display: flex; flex-direction: column; min-height: 0; margin-bottom: 12px;
+    }
+    #log-wrap .gallery-label { margin-bottom: 6px; }
+    #tactical-log {
+        flex: 1; overflow-y: auto; font-size: .67rem; line-height: 1.7;
+        color: #484858; min-height: 0; font-family: 'Courier New', monospace;
+    }
+    #tactical-log::-webkit-scrollbar { width: 3px; }
+    #tactical-log::-webkit-scrollbar-thumb { background: #2a2a35; }
+    .log-line { border-bottom: 1px solid #0e0e16; padding: 1px 0; }
+    .log-line.special { color: #6a5f28; }
+
+    #move-counter {
+        font-size: .6rem; letter-spacing: 2px; color: #333;
+        text-transform: uppercase; text-align: center;
+        margin-bottom: 10px; font-family: 'Courier New', monospace;
+    }
+
+    .btn {
+        background: var(--accent); color: #000; border: none;
+        padding: 15px; border-radius: 4px; font-weight: 900;
+        cursor: pointer; transition: all .2s;
+        text-transform: uppercase; letter-spacing: 2px;
+        font-family: 'Segoe UI', Roboto, sans-serif;
+        font-size: .75rem; width: 100%;
+    }
+    .btn:hover { background: #fff; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(212,175,55,.4); }
+    .btn-ghost { background: transparent; color: #444; border: 1px solid #222; font-size: .7rem; }
+    .btn-ghost:hover { background: transparent; color: var(--grey); border-color: #333; transform: none; box-shadow: none; }
+
+    /* ── CANVAS AREA ──────────────────────────────── */
+    #canvas-container {
+        flex-grow: 1; position: relative;
+        display: flex; justify-content: center; align-items: center;
+        background: radial-gradient(ellipse at 50% 50%, #1e0f03 0%, #020204 70%);
+        overflow: hidden;
+    }
+    canvas {
+        cursor: crosshair; display: block;
+        box-shadow:
+            0 0 0 5px #2a1505,
+            0 0 0 8px #6a3a12,
+            0 0 0 11px #2a1505,
+            0 0 50px rgba(0,0,0,.95),
+            0 0 100px rgba(80,40,5,.35);
+    }
+
+    #check-alert {
+        position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+        color: #ff3333; font-weight: 900; font-size: 4rem;
+        letter-spacing: 20px; opacity: 0; pointer-events: none;
+        transition: .4s; z-index: 5;
+        text-shadow: 0 0 20px rgba(255,0,0,.5);
+    }
+    .show-check { opacity: 1 !important; transform: translateX(-50%) scale(1.1) !important; }
+
+    #arena-badge {
+        position: absolute; bottom: 12px; right: 12px;
+        font-size: .58rem; letter-spacing: 2px; color: #3d2a0f;
+        text-transform: uppercase; font-family: 'Courier New', monospace;
+        pointer-events: none;
+    }
+
+    /* ── OVERLAYS ─────────────────────────────────── */
+    #overlay, #victory-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,.92);
+        display: flex; justify-content: center; align-items: center;
+        z-index: 1000; backdrop-filter: blur(8px);
+    }
+    .start-box {
+        text-align: center; background: #0a0a0f;
+        padding: 60px; border: 1px solid var(--accent);
+        border-radius: 4px; box-shadow: 0 0 50px rgba(212,175,55,.15);
+    }
+    .start-box h1 {
+        color: var(--accent); margin-bottom: 10px;
+        letter-spacing: 10px; font-size: 1.4rem;
+        font-weight: 900; text-transform: uppercase;
+    }
+    .start-box p {
+        color: var(--grey); margin-bottom: 40px;
+        font-size: .8rem; letter-spacing: 2px; text-transform: uppercase;
+    }
+    .btn-row { display: flex; gap: 20px; justify-content: center; }
+    #winner-text { font-size: 1.6rem; letter-spacing: 6px; }
+    #sub-text    { margin-bottom: 8px !important; }
+    #moves-text  {
+        color: #555; font-size: .7rem; letter-spacing: 1px;
+        margin-bottom: 36px !important; font-family: 'Courier New', monospace;
+    }
+</style>
 </head>
 <body>
 
+<div id="check-alert">CHECK</div>
+
 <div id="overlay">
-    <h1 style="letter-spacing: 10px; color: var(--accent); margin-bottom: 30px;">VANGUARD V4</h1>
-    <div style="display: flex;">
-        <button class="btn" onclick="startGame('w')">WEISS ÜBERNEHMEN</button>
-        <button class="btn" onclick="startGame('b')">SCHWARZ ÜBERNEHMEN</button>
+    <div class="start-box">
+        <h1>VANGUARD : ORBITAL</h1>
+        <p>TOROIDAL TOPOLOGY &nbsp;·&nbsp; 8×16 BOARD &nbsp;·&nbsp; WHITE MOVES FIRST</p>
+        <div class="btn-row">
+            <button class="btn" onclick="startGame('w')">Command White</button>
+            <button class="btn" style="background:#eee;" onclick="startGame('b')">Command Black</button>
+        </div>
+    </div>
+</div>
+
+<div id="victory-overlay" style="display:none;">
+    <div class="start-box">
+        <h1 id="winner-text">VICTORY</h1>
+        <p id="sub-text">REASON</p>
+        <p id="moves-text">—</p>
+        <button class="btn" onclick="showChoiceMenu()">Re-Deploy Units</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <h2 style="color: var(--accent); letter-spacing: 4px; text-align: center;">TACTICAL LOG</h2>
-    <div id="log" style="height: 400px; overflow-y: auto; font-size: 0.75rem; color: #888; border: 1px solid #222; padding: 10px; margin-top: 20px;">
-        System bereit...
+    <div class="header"><h1>VANGUARD V4.0</h1></div>
+    <div id="commander-badge">Commander · <span id="cmd-side">—</span></div>
+    <div id="game-info">
+        <div class="turn-label" id="turn-text">SELECT SIDE</div>
+        <div id="timer-box">—</div>
     </div>
+    <div class="fuel-section">
+        <div class="fuel-row">
+            <div class="fuel-meta" id="fw-meta"><span>White</span><span class="fval" id="fw-val">60s</span></div>
+            <div class="fuel-track"><div class="fuel-fill" id="fw-bar" style="width:100%"></div></div>
+        </div>
+        <div class="fuel-row">
+            <div class="fuel-meta" id="fb-meta"><span>Black</span><span class="fval" id="fb-val">60s</span></div>
+            <div class="fuel-track"><div class="fuel-fill" id="fb-bar" style="width:100%"></div></div>
+        </div>
+    </div>
+    <div id="rules-primer">
+        <b>Toroidal:</b> Edges wrap — infinite theatre.<br>
+        <b>Pawns:</b> 2 rows per side. Double-step on debut.<br>
+        <b>Timing:</b> AI 5s · You 60s · Capture = +5s.<br>
+        <b>White always moves first.</b>
+    </div>
+    <div id="gallery">
+        <div class="gallery-label">AI Salvage</div>
+        <div id="captured-by-ai" class="captured-row"></div>
+        <div class="gallery-label">Your Salvage</div>
+        <div id="captured-by-player" class="captured-row"></div>
+    </div>
+    <div id="log-wrap">
+        <div class="gallery-label">Tactical Log</div>
+        <div id="tactical-log"></div>
+    </div>
+    <div id="move-counter">Moves · <span id="mc">0000</span></div>
+    <button class="btn btn-ghost" onclick="showChoiceMenu()">Emergency Abort</button>
 </div>
 
 <div id="canvas-container">
     <canvas id="gameCanvas"></canvas>
+    <div id="arena-badge">MOVES · <span id="arena-mc">0000</span></div>
 </div>
 
 <script>
-const ROWS = 8, COLS = 16, CELL = 80;
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
+// ════════════════════════════════════════════════════════════
+//  VANGUARD : ORBITAL  v4.0 — Claude Edition
+//  White always moves first.
+//  Board: walnut (light) / wenge (dark) wood grain tiles.
+//  Pieces: Carrara marble (white) / Nero marquina slate (black).
+// ════════════════════════════════════════════════════════════
 
-let board, turn = 'w', myColor = 'w', selected = null, gameActive = false;
-let cam = { x: 50, y: 50 }, isPanning = false;
+const ROWS = 8, COLS = 16, CELL = 66;
+const PLAYER_TIME = 60, AI_TIME = 5, FUEL_MAX = 60;
 
-const VALS = { 'P': 10, 'N': 30, 'B': 30, 'R': 50, 'Q': 90, 'K': 900 };
+const PIECES = {
+    wK:'♔',wQ:'♕',wR:'♖',wB:'♗',wN:'♘',wP:'♙',
+    bK:'♚',bQ:'♛',bR:'♜',bB:'♝',bN:'♞',bP:'♟'
+};
+const VALS = { P:120, N:500, B:450, R:700, Q:1300, K:60000 };
 
-function mulberry32(a) { return function() { let t = a += 0x6D2B79F5; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; } }
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+const checkEl = document.getElementById('check-alert');
 
-function addLog(msg) {
-    const l = document.getElementById('log');
-    l.innerHTML += `<div>> ${msg}</div>`;
-    l.scrollTop = l.scrollHeight;
+let board, hasMoved, turn, myColor;
+let selected = null, validMoves = [], lastMove = null;
+let gameActive = false, timerInterval, timeLeft;
+let fuel = { w:FUEL_MAX, b:FUEL_MAX };
+let moveCount = 0;
+let rafId = null;   // track animation frame so we can cancel on new game
+
+// ════════════════════════════════════════════════════════════
+//  SEEDED RNG — deterministic grain per cell, no Math.random
+// ════════════════════════════════════════════════════════════
+function seededRng(seed) {
+    let s = seed;
+    return () => {
+        s = (s ^ (s << 13)) >>> 0;
+        s = (s ^ (s >> 7))  >>> 0;
+        s = (s ^ (s << 17)) >>> 0;
+        return (s >>> 0) / 0xFFFFFFFF;
+    };
 }
 
-function startGame(side) {
-    myColor = side;
-    document.getElementById('overlay').style.display = 'none';
-    gameActive = true;
-    initBoard();
-    addLog(`Kommando übernommen: ${side === 'w' ? 'WEISS' : 'SCHWARZ'}`);
-    if (myColor === 'b') setTimeout(aiMove, 600);
-}
+// ════════════════════════════════════════════════════════════
+//  TILE TEXTURE CACHE  — one canvas per board cell
+// ════════════════════════════════════════════════════════════
+let tileCache = [];   // [r][c] → HTMLCanvasElement
 
-function initBoard() {
-    board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
-    const layout = ['R','N','B','Q','K','B','N','R'];
-    for (let i = 0; i < 8; i++) {
-        let col = i + 4;
-        board[0][col] = 'bP'; board[1][col] = 'bR'; board[1][col+1] = 'bN'; // Simplified setup for demo logic
-        // Full setup per your previous request
-        board[0][col] = 'bP'; board[1][col] = 'b'+layout[i]; board[2][col] = 'bP';
-        board[7][col] = 'wP'; board[6][col] = 'w'+layout[i]; board[5][col] = 'wP';
-    }
-}
-
-// ── AI LOGIC BASED ON YOUR UPLOADED FILE ────────────────────────
-function aiMove() {
-    if (!gameActive) return;
-    const aiColor = myColor === 'w' ? 'b' : 'w';
-    let moves = [];
-    
-    for (let r=0; r<ROWS; r++) {
-        for (let c=0; c<COLS; c++) {
-            if (board[r][c] && board[r][c][0] === aiColor) {
-                let targets = getMoves(r, c);
-                targets.forEach(t => {
-                    let score = 0;
-                    const victim = board[t.r][t.c];
-                    
-                    // 1. Capture Value
-                    if (victim) score += VALS[victim[1]] * 10;
-                    
-                    // 2. Positional (Center control)
-                    if (t.c >= 6 && t.c <= 10) score += 2;
-                    
-                    // 3. Simple Threat Avoidance
-                    moves.push({ from: {r, c}, to: t, score: score + Math.random() });
-                });
-            }
-        }
-    }
-
-    moves.sort((a, b) => b.score - a.score);
-    const best = moves[0];
-    if (best) {
-        addLog(`AI bewegt ${board[best.from.r][best.from.c][1]} nach ${best.to.r}:${best.to.c}`);
-        executeMove(best.from, best.to);
-    }
-}
-
-function executeMove(from, to) {
-    if (board[to.r][to.c] && board[to.r][to.c][1] === 'K') {
-        gameActive = false;
-        addLog("ZIEL ELIMINIERT. OPERATION BEENDET.");
-        setTimeout(() => { alert("SPIEL BEENDET"); location.reload(); }, 500);
-    }
-    board[to.r][to.c] = board[from.r][from.c];
-    board[from.r][from.c] = '';
-    turn = turn === 'w' ? 'b' : 'w';
-    if (gameActive && turn !== myColor) setTimeout(aiMove, 800);
-}
-
-// ── RENDER ENGINE (PREMIUM VISUALS) ─────────────────────────────
-function drawSquare(r, c, x, y, isGhost) {
+function buildTile(r, c) {
+    const oc = document.createElement('canvas');
+    oc.width = oc.height = CELL;
+    const ox = oc.getContext('2d');
+    const rng = seededRng(r * 137 + c * 251 + 9973);
     const isLight = (r + c) % 2 === 0;
-    const seed = (r * 1000) + c; const rand = mulberry32(seed);
-    ctx.globalAlpha = isGhost ? 0.2 : 1.0;
-    let grad = ctx.createLinearGradient(x, y, x+CELL, y+CELL);
-    if (isLight) { grad.addColorStop(0, '#e8c191'); grad.addColorStop(1, '#b57a44'); }
-    else { grad.addColorStop(0, '#1a1a1a'); grad.addColorStop(1, '#050505'); }
-    ctx.fillStyle = grad; ctx.fillRect(x,y,CELL,CELL);
-    
-    ctx.beginPath(); ctx.strokeStyle = isLight ? 'rgba(100,50,0,0.1)' : 'rgba(255,255,255,0.05)';
-    for(let i=0; i<12; i++) { let off = rand()*CELL; ctx.moveTo(x+off, y); ctx.lineTo(x+off-5, y+CELL); }
-    ctx.stroke();
-}
 
-function draw() {
-    canvas.width = window.innerWidth - 320; canvas.height = window.innerHeight;
-    ctx.fillStyle = '#000'; ctx.fillRect(0,0,canvas.width, canvas.height);
-    if (!board) { requestAnimationFrame(draw); return; }
+    if (isLight) {
+        // ── Warm walnut / light maple ────────────────
+        const base = ox.createLinearGradient(0, 0, CELL, CELL * 0.7);
+        base.addColorStop(0,    '#cc9a5e');
+        base.addColorStop(0.3,  '#b87c3a');
+        base.addColorStop(0.65, '#c08a46');
+        base.addColorStop(1,    '#9a6224');
+        ox.fillStyle = base;
+        ox.fillRect(0, 0, CELL, CELL);
 
-    for (let r = -1; r < ROWS + 1; r++) {
-        for (let c = -1; c < COLS + 1; c++) {
-            const rr = (r+ROWS)%ROWS, rc = (c+COLS)%COLS;
-            const x = c*CELL+cam.x, y = r*CELL+cam.y;
-            drawSquare(rr, rc, x, y, r<0||r>=ROWS||c<0||c>=COLS);
-            if (board[rr][rc]) {
-                const isWhite = board[rr][rc][0] === 'w';
-                ctx.fillStyle = isWhite ? '#fff' : '#b19cd9';
-                ctx.font = '40px serif'; ctx.textAlign = 'center';
-                ctx.fillText(board[rr][rc][1], x+CELL/2, y+CELL/2+12);
-            }
+        // Angled wood-grain lines
+        for (let g = 0; g < 11; g++) {
+            const gy    = rng() * CELL * 1.2 - CELL * 0.1;
+            const angle = (rng() - 0.5) * 0.12;
+            const alpha = 0.06 + rng() * 0.20;
+            const lw    = 0.5 + rng() * 2.0;
+            ox.save();
+            ox.translate(0, gy);
+            ox.rotate(angle);
+            const gd = ox.createLinearGradient(0, 0, CELL, 0);
+            gd.addColorStop(0,   `rgba(55,24,4,0)`);
+            gd.addColorStop(0.15,`rgba(55,24,4,${alpha})`);
+            gd.addColorStop(0.85,`rgba(55,24,4,${alpha * 0.8})`);
+            gd.addColorStop(1,   `rgba(55,24,4,0)`);
+            ox.fillStyle = gd;
+            ox.fillRect(0, -lw/2, CELL, lw);
+            ox.restore();
         }
+        // Optional wood knot
+        if (rng() > 0.72) {
+            const kx = 8 + rng() * (CELL-16), ky = 8 + rng() * (CELL-16);
+            const kr = 5 + rng() * 9;
+            const kn = ox.createRadialGradient(kx, ky, 0, kx, ky, kr);
+            kn.addColorStop(0,   'rgba(45,18,3,0.35)');
+            kn.addColorStop(0.6, 'rgba(90,48,14,0.15)');
+            kn.addColorStop(1,   'rgba(45,18,3,0)');
+            ox.fillStyle = kn;
+            ox.fillRect(0, 0, CELL, CELL);
+        }
+        // Top-left specular sheen
+        const sh = ox.createRadialGradient(4, 4, 0, 20, 20, CELL * 0.75);
+        sh.addColorStop(0,   'rgba(255,215,140,0.22)');
+        sh.addColorStop(1,   'rgba(255,215,140,0)');
+        ox.fillStyle = sh; ox.fillRect(0, 0, CELL, CELL);
+
+    } else {
+        // ── Dark wenge / ebony ───────────────────────
+        const base = ox.createLinearGradient(0, 0, CELL, CELL);
+        base.addColorStop(0,   '#1c0d04');
+        base.addColorStop(0.4, '#250f05');
+        base.addColorStop(0.7, '#180a03');
+        base.addColorStop(1,   '#0f0602');
+        ox.fillStyle = base; ox.fillRect(0, 0, CELL, CELL);
+
+        // Fine dense grain
+        for (let g = 0; g < 16; g++) {
+            const gy    = rng() * CELL * 1.1 - CELL * 0.05;
+            const angle = (rng() - 0.5) * 0.08;
+            const alpha = 0.04 + rng() * 0.13;
+            const lw    = 0.3 + rng() * 1.1;
+            ox.save();
+            ox.translate(0, gy); ox.rotate(angle);
+            const gd = ox.createLinearGradient(0, 0, CELL, 0);
+            gd.addColorStop(0,   `rgba(0,0,0,0)`);
+            gd.addColorStop(0.3, `rgba(0,0,0,${alpha})`);
+            gd.addColorStop(0.7, `rgba(0,0,0,${alpha})`);
+            gd.addColorStop(1,   `rgba(0,0,0,0)`);
+            ox.fillStyle = gd; ox.fillRect(0, -lw/2, CELL, lw);
+            // Chatoyant shimmer streak
+            if (rng() > 0.55) {
+                const sd = ox.createLinearGradient(0, 0, CELL, 0);
+                const sa = rng() * 0.09;
+                sd.addColorStop(0,   `rgba(90,55,20,0)`);
+                sd.addColorStop(0.5, `rgba(90,55,20,${sa})`);
+                sd.addColorStop(1,   `rgba(90,55,20,0)`);
+                ox.fillStyle = sd; ox.fillRect(0, lw/2, CELL, 0.7);
+            }
+            ox.restore();
+        }
+        // Subtle gloss
+        const sh = ox.createRadialGradient(CELL*0.22, CELL*0.22, 0, CELL*0.35, CELL*0.35, CELL*0.65);
+        sh.addColorStop(0,   'rgba(110,60,15,0.10)');
+        sh.addColorStop(1,   'rgba(110,60,15,0)');
+        ox.fillStyle = sh; ox.fillRect(0, 0, CELL, CELL);
     }
-    requestAnimationFrame(draw);
+
+    // ── Raised bevel border (all tiles) ──────────────
+    // Dark outer groove
+    ox.strokeStyle = isLight ? 'rgba(35,12,2,0.55)' : 'rgba(0,0,0,0.75)';
+    ox.lineWidth = 1;
+    ox.strokeRect(0.5, 0.5, CELL-1, CELL-1);
+    // Light top-left edge highlight → raised look
+    ox.beginPath();
+    ox.moveTo(1.5, CELL-1.5); ox.lineTo(1.5, 1.5); ox.lineTo(CELL-1.5, 1.5);
+    ox.strokeStyle = isLight ? 'rgba(230,170,90,0.28)' : 'rgba(110,65,20,0.18)';
+    ox.lineWidth = 1; ox.stroke();
+    // Dark bottom-right shadow edge
+    ox.beginPath();
+    ox.moveTo(1.5, CELL-1.5); ox.lineTo(CELL-1.5, CELL-1.5); ox.lineTo(CELL-1.5, 1.5);
+    ox.strokeStyle = isLight ? 'rgba(30,10,2,0.30)' : 'rgba(0,0,0,0.50)';
+    ox.stroke();
+
+    return oc;
 }
 
-// Reusing your getMoves logic
-function getMoves(r, c) {
-    const p = board[r][c]; if (!p) return [];
-    const type = p[1], col = p[0], moves = [];
-    const dirs = {'R':[[0,1],[0,-1],[1,0],[-1,0]], 'B':[[1,1],[1,-1],[-1,1],[-1,-1]], 'Q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'N':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]}[type] || [];
-    if (type === 'P') {
-        const fwd = col === 'w' ? -1 : 1; const nr = (r+fwd+ROWS)%ROWS;
-        if (!board[nr][c]) moves.push({r: nr, c: c});
-        [-1, 1].forEach(dc => { const nc = (c+dc+COLS)%COLS; if (board[nr][nc] && board[nr][nc][0] !== col) moves.push({r: nr, c: nc}); });
+function buildTileCache() {
+    tileCache = [];
+    for (let r = 0; r < ROWS; r++) {
+        tileCache[r] = [];
+        for (let c = 0; c < COLS; c++) tileCache[r][c] = buildTile(r, c);
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PIECE DRAWING — carved marble / polished slate
+// ════════════════════════════════════════════════════════════
+function drawPiece(x, y, piece) {
+    const isWhite = piece[0] === 'w';
+    const cx = x + CELL/2, cy = y + CELL/2, PR = CELL * 0.36;
+
+    ctx.save();
+
+    // 1 — Drop shadow
+    ctx.shadowColor = 'rgba(0,0,0,0.70)';
+    ctx.shadowBlur  = 14;
+    ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 5;
+
+    // 2 — Stone disc
+    // White: Carrara marble (cream → warm grey)
+    // Black: Nero Marquina slate (dark violet-grey → near black)
+    const dg = ctx.createRadialGradient(
+        cx - PR*0.30, cy - PR*0.38, PR*0.04,
+        cx + PR*0.08, cy + PR*0.08, PR
+    );
+    if (isWhite) {
+        dg.addColorStop(0,    '#f8f4ef');
+        dg.addColorStop(0.30, '#ede4d5');
+        dg.addColorStop(0.65, '#d5c8b5');
+        dg.addColorStop(1,    '#baaD98');
     } else {
-        const lim = (type === 'K' || type === 'N') ? 2 : 16;
-        dirs.forEach(([dr, dc]) => {
-            for (let i = 1; i < lim; i++) {
-                const nr = (r + dr * i + ROWS) % ROWS, nc = (c + dc * i + COLS) % COLS;
-                if (board[nr][nc] && board[nr][nc][0] === col) break;
-                moves.push({r: nr, c: nc});
-                if (board[nr][nc]) break;
-            }
-        });
+        dg.addColorStop(0,    '#504860');
+        dg.addColorStop(0.28, '#30283a');
+        dg.addColorStop(0.65, '#1c1822');
+        dg.addColorStop(1,    '#0c0a12');
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, PR, 0, Math.PI*2);
+    ctx.fillStyle = dg; ctx.fill();
+
+    // 3 — Vein lines (clipped)
+    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, PR, 0, Math.PI*2); ctx.clip();
+
+    // Fixed vein paths — same every render (no random, stable look)
+    const veins = isWhite
+        ? [[0.15, 2.4, 0.6, 0.35], [0.55, 0.9, 0.4, 0.75], [0.82, 1.7, 0.7, 0.25]]
+        : [[0.28, 1.8, 0.5, 0.60], [0.70, 2.8, 0.3, 0.45]];
+
+    veins.forEach(([a, offset, bp1, bp2]) => {
+        const ang = a * Math.PI * 2;
+        const x1  = cx + Math.cos(ang) * PR * 1.25;
+        const y1  = cy + Math.sin(ang) * PR * 1.25;
+        const x2  = cx + Math.cos(ang + offset) * PR * 0.95;
+        const y2  = cy + Math.sin(ang + offset) * PR * 0.95;
+        const cpx1= cx + Math.cos(ang + 0.75) * PR * (0.35 + bp1 * 0.45);
+        const cpy1= cy + Math.sin(ang + 0.75) * PR * (0.35 + bp1 * 0.45);
+        const cpx2= cx + Math.cos(ang - 0.55) * PR * (0.30 + bp2 * 0.50);
+        const cpy2= cy + Math.sin(ang - 0.55) * PR * (0.30 + bp2 * 0.50);
+
+        const vg = ctx.createLinearGradient(x1, y1, x2, y2);
+        if (isWhite) {
+            vg.addColorStop(0,    'rgba(135,115,95,0)');
+            vg.addColorStop(0.35, 'rgba(135,115,95,0.28)');
+            vg.addColorStop(0.65, 'rgba(155,132,108,0.22)');
+            vg.addColorStop(1,    'rgba(135,115,95,0)');
+        } else {
+            vg.addColorStop(0,    'rgba(195,182,215,0)');
+            vg.addColorStop(0.35, 'rgba(195,182,215,0.30)');
+            vg.addColorStop(0.65, 'rgba(175,162,200,0.22)');
+            vg.addColorStop(1,    'rgba(195,182,215,0)');
+        }
+        ctx.strokeStyle = vg;
+        ctx.lineWidth   = isWhite ? 1.0 : 0.75;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(cpx1, cpy1, cpx2, cpy2, x2, y2);
+        ctx.stroke();
+    });
+    ctx.restore(); // end vein clip
+
+    // 4 — Rim bevel (light top-left, dark bottom-right)
+    const rg = ctx.createLinearGradient(cx-PR, cy-PR, cx+PR, cy+PR);
+    if (isWhite) {
+        rg.addColorStop(0,   'rgba(255,250,240,0.65)');
+        rg.addColorStop(0.5, 'rgba(185,165,138,0.20)');
+        rg.addColorStop(1,   'rgba(70,50,32,0.75)');
+    } else {
+        rg.addColorStop(0,   'rgba(145,128,175,0.50)');
+        rg.addColorStop(0.5, 'rgba(55,45,75,0.18)');
+        rg.addColorStop(1,   'rgba(4,2,8,0.90)');
+    }
+    ctx.beginPath(); ctx.arc(cx, cy, PR, 0, Math.PI*2);
+    ctx.strokeStyle = rg; ctx.lineWidth = 2; ctx.stroke();
+
+    // 5 — Specular top-left gloss
+    const sg = ctx.createRadialGradient(cx-PR*0.40, cy-PR*0.40, 0, cx-PR*0.30, cy-PR*0.30, PR*0.55);
+    sg.addColorStop(0,   isWhite ? 'rgba(255,255,255,0.62)' : 'rgba(215,205,255,0.32)');
+    sg.addColorStop(0.5, isWhite ? 'rgba(255,255,255,0.07)' : 'rgba(180,170,220,0.05)');
+    sg.addColorStop(1,   'rgba(255,255,255,0)');
+    ctx.beginPath(); ctx.arc(cx, cy, PR, 0, Math.PI*2);
+    ctx.fillStyle = sg; ctx.fill();
+
+    // 6 — Engraved glyph
+    const fs = `bold ${Math.round(CELL*0.43)}px serif`;
+    ctx.font = fs; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    // Shadow (engraving depth)
+    ctx.fillStyle = isWhite ? 'rgba(80,50,22,0.48)' : 'rgba(0,0,0,0.65)';
+    ctx.fillText(PIECES[piece], cx+1, cy+2);
+    // Main colour — dark brown on marble, soft lavender on slate
+    ctx.fillStyle = isWhite ? '#52341a' : '#ccc0e0';
+    ctx.fillText(PIECES[piece], cx, cy+0.5);
+
+    ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOARD FRAME — carved walnut surround with gold inlay
+// ════════════════════════════════════════════════════════════
+function drawBoardFrame() {
+    const bw = COLS*CELL, bh = ROWS*CELL;
+    ctx.save();
+    // Thick walnut frame
+    const fg = ctx.createLinearGradient(-8, -8, bw+8, bh+8);
+    fg.addColorStop(0,   '#905a22');
+    fg.addColorStop(0.3, '#6e4016');
+    fg.addColorStop(0.7, '#4c2a08');
+    fg.addColorStop(1,   '#301802');
+    ctx.strokeStyle = fg; ctx.lineWidth = 14;
+    ctx.strokeRect(-7, -7, bw+14, bh+14);
+    // Inner highlight edge of frame
+    ctx.strokeStyle = 'rgba(200,140,60,0.35)'; ctx.lineWidth = 2;
+    ctx.strokeRect(-1, -1, bw+2, bh+2);
+    // Gold inlay line
+    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(1, 1, bw-2, bh-2);
+    // Inner shadow
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = 1;
+    ctx.strokeRect(2, 2, bw-4, bh-4);
+    ctx.restore();
+}
+
+// ════════════════════════════════════════════════════════════
+//  BOARD INIT
+// ════════════════════════════════════════════════════════════
+function initBoard() {
+    board    = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
+    hasMoved = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+    const L  = ['R','N','B','Q','K','B','N','R'];
+    for (let i = 0; i < COLS; i++) {
+        board[1][i] = 'b' + L[i%8];
+        board[6][i] = 'w' + L[i%8];
+    }
+    for (let c = 0; c < COLS; c++) {
+        board[0][c]='bP'; board[2][c]='bP';
+        board[5][c]='wP'; board[7][c]='wP';
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MOVE GENERATION
+// ════════════════════════════════════════════════════════════
+function getMoves(r, c, b=board, hm=hasMoved) {
+    const piece=b[r][c]; if(!piece) return [];
+    const col=piece[0], type=piece[1], fwd=col==='w'?-1:1, moves=[];
+    if(type==='P') {
+        const nr=((r+fwd)%ROWS+ROWS)%ROWS;
+        if(!b[nr][c]) {
+            moves.push({r:nr,c});
+            if(!hm[r][c]){ const nr2=((r+2*fwd)%ROWS+ROWS)%ROWS; if(!b[nr2][c]) moves.push({r:nr2,c}); }
+        }
+        [-1,1].forEach(dc=>{ const nc=(c+dc+COLS)%COLS; if(b[nr][nc]&&b[nr][nc][0]!==col) moves.push({r:nr,c:nc}); });
+    } else {
+        const D={N:[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]],R:[[0,1],[0,-1],[1,0],[-1,0]],B:[[1,1],[1,-1],[-1,1],[-1,-1]],Q:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]],K:[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]]}[type];
+        const lim=(type==='K'||type==='N')?2:16;
+        D.forEach(([dr,dc])=>{ for(let i=1;i<lim;i++){ const nr=((r+dr*i)%ROWS+ROWS)%ROWS,nc=(c+dc*i+COLS)%COLS; if(b[nr][nc]&&b[nr][nc][0]===col) break; moves.push({r:nr,c:nc}); if(b[nr][nc]) break; } });
     }
     return moves;
 }
 
-canvas.onmousedown = e => { if (e.button === 2) isPanning = true; else if (gameActive && turn === myColor) {
-    const x = e.offsetX - cam.x, y = e.offsetY - cam.y;
-    const c = Math.floor(x/CELL), r = Math.floor(y/CELL);
-    const rr = (r+ROWS)%ROWS, rc = (c+COLS)%COLS;
-    if (selected) {
-        if (getMoves(selected.r, selected.c).some(m => m.r === rr && m.c === rc)) executeMove(selected, {r:rr, c:rc});
-        selected = null;
-    } else if (board[rr][rc] && board[rr][rc][0] === myColor) selected = {r:rr, c:rc};
-}};
+// ════════════════════════════════════════════════════════════
+//  EXECUTE MOVE
+// ════════════════════════════════════════════════════════════
+function executeMove(fr, fc, tr, tc) {
+    if(!gameActive) return;
+    let p=board[fr][fc]; const v=board[tr][tc];
+    const N={R:'Rook',N:'Knight',B:'Bishop',Q:'Queen',K:'King',P:'Pawn'};
+    moveCount++;
+    if(v) {
+        fuel[turn]=Math.min(fuel[turn]+5,FUEL_MAX);
+        const id=v[0]===myColor?'captured-by-ai':'captured-by-player';
+        const span=document.createElement('span');
+        span.className='captured-piece'; span.innerText=PIECES[v];
+        span.style.color=v[0]==='w'?'#ede0c8':'#a090c0';
+        document.getElementById(id).appendChild(span);
+        addLog(`[${String(moveCount).padStart(3,'0')}] ${turn==='w'?'WHITE':'BLACK'} takes ${N[v[1]]} +5s`,true);
+        if(v[1]==='K') return endGame(p[0]===myColor?'PLAYER':'AI','REGICIDE');
+    } else {
+        addLog(`[${String(moveCount).padStart(3,'0')}] ${turn==='w'?'WHITE':'BLACK'} · ${N[p[1]]} → (${tr},${tc})`);
+    }
+    if(p[1]==='P'&&(tr===0||tr===ROWS-1)){ p=p[0]+'Q'; addLog(`[${String(moveCount).padStart(3,'0')}] Promoted to Queen!`,true); }
+    board[tr][tc]=p; board[fr][fc]=''; hasMoved[tr][tc]=true;
+    lastMove={fr,fc,tr,tc}; selected=null; validMoves=[];
+    // White always goes first — turns alternate normally from here
+    turn=turn==='w'?'b':'w';
+    document.getElementById('mc').textContent=String(moveCount).padStart(4,'0');
+    document.getElementById('arena-mc').textContent=String(moveCount).padStart(4,'0');
+    resetTimer(); checkState();
+    if(gameActive&&turn!==myColor) aiMove();
+}
 
-window.onmousemove = e => { if (isPanning) { cam.x += e.movementX; cam.y += e.movementY; } };
-window.onmouseup = () => isPanning = false;
-window.oncontextmenu = e => e.preventDefault();
+// ════════════════════════════════════════════════════════════
+//  CHECK DETECTION
+// ════════════════════════════════════════════════════════════
+function checkState() {
+    let k=null;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]===turn+'K') k={r,c};
+    if(!k) return;
+    const en=turn==='w'?'b':'w'; let inCh=false;
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++)
+        if(board[r][c]&&board[r][c][0]===en) if(getMoves(r,c).some(m=>m.r===k.r&&m.c===k.c)) inCh=true;
+    if(inCh){ checkEl.classList.add('show-check'); addLog(`── CHECK! ${turn==='w'?'WHITE':'BLACK'} is in check ──`,true); setTimeout(()=>checkEl.classList.remove('show-check'),1200); }
+}
 
-draw();
+// ════════════════════════════════════════════════════════════
+//  TIMER + FUEL
+// ════════════════════════════════════════════════════════════
+function resetTimer() {
+    clearInterval(timerInterval);
+    timeLeft=turn===myColor?PLAYER_TIME:AI_TIME;
+    updateTimerUI();
+    timerInterval=setInterval(()=>{ timeLeft--; fuel[turn]=Math.max(0,fuel[turn]-1); updateTimerUI(); if(timeLeft<=0) endGame(turn===myColor?'AI':'PLAYER','TEMPORAL LOCKOUT'); },1000);
+}
+function updateTimerUI() {
+    const el=document.getElementById('timer-box');
+    el.innerText=Math.max(0,timeLeft)+'s'; el.className=timeLeft<=5?'danger':'';
+    document.getElementById('turn-text').innerText=turn===myColor?'YOUR COMMAND':'VANGUARD SCAN';
+    ['w','b'].forEach(s=>{
+        const pct=fuel[s]/FUEL_MAX*100,active=turn===s,danger=fuel[s]<=10;
+        document.getElementById(`f${s}-bar`).style.width=pct+'%';
+        document.getElementById(`f${s}-bar`).className='fuel-fill'+(active?' active':'')+(danger?' danger':'');
+        document.getElementById(`f${s}-meta`).className='fuel-meta'+(active?' active':'');
+        document.getElementById(`f${s}-val`).textContent=Math.ceil(fuel[s])+'s';
+    });
+}
+
+// ════════════════════════════════════════════════════════════
+//  AI
+// ════════════════════════════════════════════════════════════
+function aiMove() {
+    if(!gameActive) return;
+    const aiC=myColor==='w'?'b':'w',opp=myColor;
+    setTimeout(()=>{
+        if(!gameActive) return;
+        let bestM=null,bestS=-Infinity,moves=[],kP=null;
+        for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]===opp+'K') kP={r,c};
+        for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]&&board[r][c][0]===aiC) getMoves(r,c).forEach(m=>moves.push({fr:r,fc:c,tr:m.r,tc:m.c,p:board[r][c]}));
+        moves.forEach(m=>{
+            let s=Math.random()*15; const t=board[m.tr][m.tc];
+            if(t) s+=VALS[t[1]]*15;
+            if(!hasMoved[m.fr][m.fc]&&m.p[1]!=='P') s+=300;
+            if(kP){ const rD=Math.min(Math.abs(m.tr-kP.r),ROWS-Math.abs(m.tr-kP.r)),cD=Math.min(Math.abs(m.tc-kP.c),COLS-Math.abs(m.tc-kP.c)); s+=(25-(rD+cD))*10; }
+            const bS=board[m.fr][m.fc],bT=board[m.tr][m.tc]; board[m.tr][m.tc]=bS; board[m.fr][m.fc]='';
+            let danger=0;
+            for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) if(board[r][c]&&board[r][c][0]===opp) getMoves(r,c).forEach(om=>{ if(board[om.r][om.c]&&board[om.r][om.c][0]===aiC) danger=Math.max(danger,VALS[board[om.r][om.c][1]]); });
+            s-=danger*2; board[m.fr][m.fc]=bS; board[m.tr][m.tc]=bT;
+            if(s>bestS){bestS=s;bestM=m;}
+        });
+        if(bestM&&gameActive) executeMove(bestM.fr,bestM.fc,bestM.tr,bestM.tc);
+    },800);
+}
+
+// ════════════════════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════════════════════
+function render(ts) {
+    rafId = requestAnimationFrame(render);
+    canvas.width=COLS*CELL; canvas.height=ROWS*CELL;
+
+    for(let r=0;r<ROWS;r++) {
+        for(let c=0;c<COLS;c++) {
+            const dr=myColor==='b'?ROWS-1-r:r, dc=myColor==='b'?COLS-1-c:c;
+            const x=dc*CELL, y=dr*CELL;
+
+            // Wooden tile from cache (logical r,c for grain consistency)
+            ctx.drawImage(tileCache[r][c], x, y);
+
+            // Last-move amber wash
+            if(lastMove&&((lastMove.fr===r&&lastMove.fc===c)||(lastMove.tr===r&&lastMove.tc===c))){
+                ctx.fillStyle='rgba(212,175,55,0.22)'; ctx.fillRect(x,y,CELL,CELL);
+            }
+            // Selection gold wash + border
+            if(selected&&selected.r===r&&selected.c===c){
+                ctx.fillStyle='rgba(212,175,55,0.36)'; ctx.fillRect(x,y,CELL,CELL);
+                ctx.strokeStyle='rgba(212,175,55,0.95)'; ctx.lineWidth=2; ctx.strokeRect(x+1,y+1,CELL-2,CELL-2);
+            }
+            // Valid-move gold dot
+            validMoves.forEach(m=>{ if(m.r===r&&m.c===c){
+                ctx.fillStyle='rgba(212,175,55,0.14)'; ctx.fillRect(x,y,CELL,CELL);
+                ctx.beginPath(); ctx.arc(x+CELL/2,y+CELL/2,7,0,Math.PI*2);
+                ctx.fillStyle='rgba(212,175,55,0.82)'; ctx.fill();
+            }});
+
+            if(board[r][c]) drawPiece(x, y, board[r][c]);
+        }
+    }
+
+    drawBoardFrame();
+
+    // Toroidal edge glow
+    const a=Math.round(42*(0.5+0.5*Math.sin((ts||0)*0.003))).toString(16).padStart(2,'0');
+    ctx.fillStyle=`#d4af37${a}`; const gw=18;
+    ctx.fillRect(0,0,COLS*CELL,gw); ctx.fillRect(0,ROWS*CELL-gw,COLS*CELL,gw);
+    ctx.fillRect(0,0,gw,ROWS*CELL); ctx.fillRect(COLS*CELL-gw,0,gw,ROWS*CELL);
+}
+
+// ════════════════════════════════════════════════════════════
+//  CLICK
+// ════════════════════════════════════════════════════════════
+canvas.addEventListener('mousedown', e=>{
+    if(!gameActive||turn!==myColor) return;
+    const rect=canvas.getBoundingClientRect();
+    let c=Math.floor((e.clientX-rect.left)/(rect.width/COLS));
+    let r=Math.floor((e.clientY-rect.top)/(rect.height/ROWS));
+    if(myColor==='b'){r=ROWS-1-r; c=COLS-1-c;}
+    r=Math.max(0,Math.min(ROWS-1,r)); c=Math.max(0,Math.min(COLS-1,c));
+    const mv=validMoves.find(m=>m.r===r&&m.c===c);
+    if(mv){executeMove(selected.r,selected.c,r,c); selected=null; validMoves=[];}
+    else if(board[r][c]&&board[r][c][0]===myColor){selected={r,c}; validMoves=getMoves(r,c);}
+    else{selected=null; validMoves=[];}
+});
+
+// ════════════════════════════════════════════════════════════
+//  GAME FLOW
+// ════════════════════════════════════════════════════════════
+function startGame(side) {
+    myColor=side;
+    turn='w';   // WHITE ALWAYS MOVES FIRST — locked here, no exceptions
+    gameActive=true; moveCount=0;
+    selected=null; validMoves=[]; lastMove=null;
+    fuel={w:FUEL_MAX,b:FUEL_MAX};
+    // Cancel any previous render loop before starting a new one
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    document.getElementById('overlay').style.display='none';
+    document.getElementById('victory-overlay').style.display='none';
+    document.getElementById('captured-by-ai').innerHTML='';
+    document.getElementById('captured-by-player').innerHTML='';
+    document.getElementById('tactical-log').innerHTML='';
+    document.getElementById('mc').textContent='0000';
+    document.getElementById('arena-mc').textContent='0000';
+    document.getElementById('cmd-side').textContent=side==='w'?'WHITE':'BLACK';
+    addLog('── DEPLOYMENT READY ──',true);
+    addLog('White opens. Good luck.');
+    initBoard();
+    buildTileCache();   // deterministic wood grain — same layout every game
+    resetTimer();
+    rafId = requestAnimationFrame(render);
+    // Player chose Black → AI plays White's first move immediately
+    if(myColor==='b') aiMove();
+}
+
+function showChoiceMenu() {
+    gameActive=false; clearInterval(timerInterval);
+    document.getElementById('victory-overlay').style.display='none';
+    document.getElementById('overlay').style.display='flex';
+}
+
+function endGame(winner, reason) {
+    gameActive=false; clearInterval(timerInterval);
+    document.getElementById('victory-overlay').style.display='flex';
+    document.getElementById('winner-text').innerText=winner==='PLAYER'?'ARENA SECURED':'AI DOMINANCE';
+    document.getElementById('sub-text').innerText=reason;
+    document.getElementById('moves-text').innerText=`Engagement concluded after ${moveCount} move${moveCount!==1?'s':''}`;
+    addLog(`── ${winner==='PLAYER'?'VICTORY':'DEFEAT'}: ${reason} ──`,true);
+}
+
+function addLog(msg, special=false) {
+    const log=document.getElementById('tactical-log');
+    const div=document.createElement('div');
+    div.className='log-line'+(special?' special':'');
+    div.textContent=msg; log.appendChild(div); log.scrollTop=log.scrollHeight;
+    while(log.children.length>50) log.removeChild(log.firstChild);
+}
 </script>
 </body>
 </html>

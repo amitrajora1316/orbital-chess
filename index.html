@@ -18,6 +18,7 @@
         .fuel-bar { height: 4px; background: #1a1a25; border-radius: 2px; margin-top: 8px; overflow: hidden; }
         .fuel-fill { height: 100%; width: 100%; transition: width 0.1s linear; }
 
+        /* Turn Prompt */
         #turn-prompt { 
             font-weight: bold; color: #fff; background: #1a1a2d; padding: 10px; 
             text-align: center; border: 1px solid var(--accent); margin-bottom: 10px;
@@ -27,11 +28,11 @@
 
         #move-log { flex-grow: 1; background: #050508; border: 1px solid #1a1a25; padding: 12px; font-family: 'Consolas', monospace; font-size: 0.7rem; overflow-y: auto; color: #666; }
 
-        /* Overlay */
+        /* Overlay Styles */
         #overlay { position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(2,2,4,0.98); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 1000; text-align: center; }
         .btn { background: none; border: 1px solid var(--accent); color: var(--accent); padding: 12px 30px; margin: 10px; cursor: pointer; font-size: 0.9rem; letter-spacing: 3px; transition: 0.3s; }
         .btn:hover { background: var(--accent); color: #000; }
-        #instr { max-width: 500px; font-size: 0.8rem; margin-bottom: 30px; line-height: 1.6; color: #888; }
+        #instr { max-width: 500px; font-size: 0.8rem; margin-bottom: 30px; line-height: 1.6; color: #888; padding: 0 20px; }
     </style>
 </head>
 <body>
@@ -44,18 +45,18 @@
     </div>
     <div id="instr">Select a language to view briefing. / Sprache wählen für Briefing.</div>
     <div id="side-selection" style="display:none;">
-        <button class="btn" onclick="startGame('w')">WHITE (BOTTOM)</button>
-        <button class="btn" onclick="startGame('b')">BLACK (BOTTOM)</button>
+        <button class="btn" id="btn-w" onclick="startGame('w')">WHITE (BOTTOM)</button>
+        <button class="btn" id="btn-b" onclick="startGame('b')">BLACK (BOTTOM)</button>
     </div>
 </div>
 
 <div id="sidebar">
-    <div class="header"><h1>TACTICAL HUB</h1></div>
+    <div class="header"><h1 id="ui-title">TACTICAL HUB</h1></div>
     <div id="turn-prompt">YOUR TURN / DU BIST DRAN</div>
     <div class="timer-box">
-        <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span>WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem;"><span id="ui-wf">WHITE FUEL</span> <span id="tw-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bw-fill" class="fuel-fill" style="background: var(--accent);"></div></div>
-        <div style="display:flex; justify-content: space-between; font-size: 0.65rem; margin-top: 12px;"><span>BLACK FUEL</span> <span id="tb-val">60.0s</span></div>
+        <div style="display:flex; justify-content: space-between; font-size: 0.65rem; margin-top: 12px;"><span id="ui-bf">BLACK FUEL</span> <span id="tb-val">60.0s</span></div>
         <div class="fuel-bar"><div id="bb-fill" class="fuel-fill" style="background: #7a7a9a;"></div></div>
     </div>
     <div id="move-log"></div>
@@ -73,15 +74,30 @@ let fuel = { w: 60, b: 60 };
 let cam = { x: 50, y: 50 }, isPanning = false, lastTick = 0;
 
 const PIECES = { wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙', bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟' };
-const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 1000 };
 
 const TEXTS = {
-    en: "BRIEFING: Toroidal space rules apply. Pieces wrap around edges. Your side is at the bottom. Fuel is replenished (+10s) after every move.",
-    de: "BRIEFING: Toroidale Raumregeln gelten. Figuren erscheinen auf Gegenseite. Deine Seite ist unten. Treibstoff füllt sich (+10s) nach jedem Zug."
+    en: {
+        instr: "BRIEFING: Toroidal space rules apply. Pieces wrap around edges. Your chosen side is at the bottom. Fuel (+10s) is rewarded after every move.",
+        title: "TACTICAL HUB", wFuel: "WHITE FUEL", bFuel: "BLACK FUEL", 
+        btnW: "WHITE (BOTTOM)", btnB: "BLACK (BOTTOM)", turn: "YOUR TURN"
+    },
+    de: {
+        instr: "BRIEFING: Toroidale Regeln. Figuren erscheinen auf der Gegenseite. Deine Seite ist unten. +10s Treibstoff nach jedem Zug.",
+        title: "TAKTIK-ZENTRALE", wFuel: "WEISS ENERGIE", bFuel: "SCHWARZ ENERGIE", 
+        btnW: "WEISS (UNTEN)", btnB: "SCHWARZ (UNTEN)", turn: "DU BIST DRAN"
+    }
 };
 
 function setLang(l) {
-    document.getElementById('instr').innerText = TEXTS[l];
+    const t = TEXTS[l];
+    document.getElementById('instr').innerText = t.instr;
+    document.getElementById('ui-title').innerText = t.title;
+    document.getElementById('ui-wf').innerText = t.wFuel;
+    document.getElementById('ui-bf').innerText = t.bFuel;
+    document.getElementById('btn-w').innerText = t.btnW;
+    document.getElementById('btn-b').innerText = t.btnB;
+    document.getElementById('turn-prompt').innerText = t.turn;
+    
     document.getElementById('lang-btns').style.display = 'none';
     document.getElementById('side-selection').style.display = 'block';
 }
@@ -93,14 +109,13 @@ function startGame(side) {
     initBoard();
     lastTick = Date.now();
     updateHUD();
-    if (playerColor === 'b') setTimeout(aiMove, 600);
+    if (playerColor === 'b') setTimeout(aiMove, 800);
     requestAnimationFrame(updateTimer);
 }
 
 function initBoard() {
     board = Array(ROWS).fill(null).map(() => Array(COLS).fill(''));
     const layout = ['R','N','B','Q','K','B','N','R'];
-    // Setup pieces normally
     for (let i = 0; i < 8; i++) {
         let col = i + 4;
         board[0][col] = 'bP'; board[1][col] = 'b' + layout[i]; board[2][col] = 'bP';
@@ -108,21 +123,20 @@ function initBoard() {
     }
 }
 
+// Coordinate flipping logic for "Bottom Perspective"
 function getDisplayCoords(r, c) {
-    // If player is Black, flip the vertical view so Row 0 (Black's start) is at the bottom
-    if (playerColor === 'b') return { dr: (ROWS - 1) - r, dc: c };
+    if (playerColor === 'b') return { dr: (ROWS - 1) - r, dc: (COLS - 1) - c };
     return { dr: r, dc: c };
 }
 
 function getActualCoords(dr, dc) {
-    if (playerColor === 'b') return { r: (ROWS - 1) - dr, c: dc };
+    if (playerColor === 'b') return { r: (ROWS - 1) - dr, c: (COLS - 1) - dc };
     return { r: dr, c: dc };
 }
 
 function executeMove(from, to) {
     const p = board[from.r][from.c];
-    // Fuel Reward
-    fuel[turn] = Math.min(60, fuel[turn] + 10);
+    fuel[turn] = Math.min(60, fuel[turn] + 10); // Fuel replenishment
     
     board[to.r][to.c] = p;
     board[from.r][from.c] = '';
@@ -130,7 +144,9 @@ function executeMove(from, to) {
     const log = document.getElementById('move-log');
     log.innerHTML = `<div>> ${p[1]} ${from.r}:${from.c} -> ${to.r}:${to.c}</div>` + log.innerHTML;
 
-    if (p[1] === 'K' && (to.r !== from.r || to.c !== from.c)) { /* King moved */ }
+    if (board[to.r][to.c] && board[to.r][to.c][1] === 'K') {
+        gameActive = false; alert("CHECKMATE / MATT"); location.reload();
+    }
     
     turn = turn === 'w' ? 'b' : 'w';
     updateHUD();
@@ -141,69 +157,98 @@ function updateHUD() {
     document.getElementById('turn-prompt').style.display = (turn === playerColor) ? 'block' : 'none';
 }
 
-// ── RENDER ENGINE ──────────────────────────────────────────
 function draw() {
     canvas.width = window.innerWidth - 320; canvas.height = window.innerHeight;
     ctx.fillStyle = '#000'; ctx.fillRect(0,0, canvas.width, canvas.height);
-    if (!gameActive && !board) { requestAnimationFrame(draw); return; }
+    if (!gameActive) { requestAnimationFrame(draw); return; }
 
-    for (let r = -1; r < ROWS + 1; r++) {
-        for (let c = -1; c < COLS + 1; c++) {
-            const rr = (r + ROWS) % ROWS, rc = (c + COLS) % COLS;
-            const view = getDisplayCoords(rr, rc);
-            const x = rc * CELL + cam.x, y = view.dr * CELL + cam.y;
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const view = getDisplayCoords(r, c);
+            const x = view.dc * CELL + cam.x, y = view.dr * CELL + cam.y;
             
-            // Draw Square
-            const isLight = (rr + rc) % 2 === 0;
+            const isLight = (r + c) % 2 === 0;
             ctx.fillStyle = isLight ? '#b57a44' : '#1a1a1a';
-            ctx.globalAlpha = (r < 0 || r >= ROWS) ? 0.2 : 1.0;
             ctx.fillRect(x, y, CELL, CELL);
 
-            // Highlight Selection
-            if (selected && selected.r === rr && selected.c === rc) {
-                ctx.strokeStyle = var(--accent); ctx.lineWidth = 3; ctx.strokeRect(x+2, y+2, CELL-4, CELL-4);
+            if (selected && selected.r === r && selected.c === c) {
+                ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(x+2, y+2, CELL-4, CELL-4);
             }
 
-            if (board[rr][rc]) {
-                ctx.fillStyle = board[rr][rc][0] === 'w' ? '#fff' : '#b19cd9';
+            if (board[r][c]) {
+                ctx.fillStyle = board[r][c][0] === 'w' ? '#fff' : '#b19cd9';
                 ctx.font = '36px serif'; ctx.textAlign = 'center';
-                ctx.fillText(PIECES[board[rr][rc]], x + CELL/2, y + CELL/2 + 13);
+                ctx.fillText(PIECES[board[r][c]], x + CELL/2, y + CELL/2 + 13);
             }
         }
     }
     requestAnimationFrame(draw);
 }
 
-// ── INPUT HANDLING ──────────────────────────────────────────
-canvas.onmousedown = e => {
-    if (e.button === 2) isPanning = true;
-    else if (gameActive && turn === playerColor) {
-        const mx = e.offsetX - cam.x, my = e.offsetY - cam.y;
-        const vdc = Math.floor(mx/CELL), vdr = Math.floor(my/CELL);
-        const { r, c } = getActualCoords((vdr + ROWS) % ROWS, (vdc + COLS) % COLS);
-        
-        if (selected) {
-            // Check if legal (using standard move logic)
-            executeMove(selected, {r, c});
-            selected = null;
-        } else if (board[r][c] && board[r][c][0] === playerColor) {
-            selected = {r, c};
+function getMoves(r, c) {
+    const p = board[r][c]; if (!p) return [];
+    const type = p[1], col = p[0], moves = [];
+    if (type === 'P') {
+        const fwd = col === 'w' ? -1 : 1;
+        const nr = (r + fwd + ROWS) % ROWS;
+        if (!board[nr][c]) moves.push({r: nr, c: c});
+        [-1, 1].forEach(dc => {
+            const nc = (c + dc + COLS) % COLS;
+            if (board[nr][nc] && board[nr][nc][0] !== col) moves.push({r: nr, c: nc});
+        });
+    } else {
+        const dirs = {'R':[[0,1],[0,-1],[1,0],[-1,0]], 'B':[[1,1],[1,-1],[-1,1],[-1,-1]], 'Q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'K':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'N':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]}[type];
+        const lim = (type === 'K' || type === 'N') ? 2 : 16;
+        dirs.forEach(([dr, dc]) => {
+            for (let i = 1; i < lim; i++) {
+                const nr = (r + dr * i + ROWS) % ROWS, nc = (c + dc * i + COLS) % COLS;
+                if (board[nr][nc] && board[nr][nc][0] === col) break;
+                moves.push({r: nr, c: nc});
+                if (board[nr][nc]) break;
+            }
+        });
+    }
+    return moves;
+}
+
+function aiMove() {
+    if (!gameActive) return;
+    const aiCol = playerColor === 'w' ? 'b' : 'w';
+    let moves = [];
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) {
+        if(board[r][c] && board[r][c][0]===aiCol) {
+            getMoves(r,c).forEach(m => moves.push({from:{r,c}, to:m}));
         }
     }
-};
+    const move = moves[Math.floor(Math.random()*moves.length)];
+    if(move) executeMove(move.from, move.to);
+}
 
-// ... (Rest of AI and Timer logic from previous working versions) ...
 function updateTimer() {
     if (!gameActive) return;
     let now = Date.now(); let delta = (now - lastTick) / 1000; lastTick = now;
     fuel[turn] -= delta;
-    if (fuel[turn] <= 0) { alert("OUT OF FUEL"); location.reload(); }
+    if (fuel[turn] <= 0) { alert("FUEL EXHAUSTED / ENERGIE LEER"); location.reload(); }
     document.getElementById('tw-val').innerText = fuel.w.toFixed(1) + 's';
     document.getElementById('tb-val').innerText = fuel.b.toFixed(1) + 's';
     document.getElementById('bw-fill').style.width = (fuel.w / 60 * 100) + '%';
     document.getElementById('bb-fill').style.width = (fuel.b / 60 * 100) + '%';
     requestAnimationFrame(updateTimer);
 }
+
+canvas.onmousedown = e => {
+    if (e.button === 2) isPanning = true;
+    else if (gameActive && turn === playerColor) {
+        const mx = e.offsetX - cam.x, my = e.offsetY - cam.y;
+        const vdc = Math.floor(mx/CELL), vdr = Math.floor(my/CELL);
+        if (vdr < 0 || vdr >= ROWS || vdc < 0 || vdc >= COLS) return;
+        const { r, c } = getActualCoords(vdr, vdc);
+        if (selected) {
+            if (getMoves(selected.r, selected.c).some(m => m.r === r && m.c === c)) executeMove(selected, {r, c});
+            selected = null;
+        } else if (board[r][c] && board[r][c][0] === playerColor) selected = {r, c};
+    }
+};
 
 window.onmousemove = e => { if (isPanning) { cam.x += e.movementX; cam.y += e.movementY; } };
 window.onmouseup = () => isPanning = false;

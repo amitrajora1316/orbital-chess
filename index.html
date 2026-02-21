@@ -61,16 +61,54 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const PIECES = { wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙', bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟' };
 const VALS = { 'P': 10, 'N': 32, 'B': 33, 'R': 50, 'Q': 90, 'K': 1000 };
-
+const TEXTS = {
+    en: { 
+        title: "TACTICAL HUB", 
+        wf: "WHITE FUEL", 
+        bf: "BLACK FUEL", 
+        btnW: "WHITE (BOTTOM)", 
+        btnB: "BLACK (BOTTOM)", 
+        turn: "YOUR TURN", 
+        win: "ARENA SECURED", 
+        loss: "CRITICAL FAILURE",
+        restart: "SYSTEM REBOOT"
+    },
+    de: { 
+        title: "TAKTIK-ZENTRALE", 
+        wf: "WEISS ENERGIE", 
+        bf: "SCHWARZ ENERGIE", 
+        btnW: "WEISS (UNTEN)", 
+        btnB: "SCHWARZ (UNTEN)", 
+        turn: "DU BIST DRAN", 
+        win: "ARENA GESICHERT", 
+        loss: "SYSTEMFEHLER",
+        restart: "SYSTEM-NEUSTART"
+    }
+};
+let curLang = 'en';
 let board, turn = 'w', playerColor = 'w', selected = null, gameActive = false, validMoves = [];
 let fuel = { w: 60, b: 60 }, lastTick = 0, cam = { x: 50, y: 50 };
 
 // --- MENU LOGIC ---
 function setLang(l) {
+    curLang = l;
+    const t = TEXTS[l];
+    
+    // Update Sidebar and Labels
+    document.getElementById('ui-title').innerText = t.title;
+    document.getElementById('ui-wf').innerText = t.wf;
+    document.getElementById('ui-bf').innerText = t.bf;
+    
+    // Update Menu Buttons
+    document.getElementById('btn-w').innerText = t.btnW;
+    document.getElementById('btn-b').innerText = t.btnB;
+    
+    // Update Victory Screen (pre-emptive)
+    document.querySelector('#victory-overlay .btn').innerText = t.restart;
+
+    // Transition Menu
     document.getElementById('lang-btns').style.display = 'none';
     document.getElementById('side-selection').style.display = 'block';
-}
-
 function startGame(side) {
     playerColor = side;
     document.getElementById('overlay').style.display = 'none';
@@ -93,11 +131,57 @@ function initBoard() {
     }
 }
 
+<script>
+// ... (Keep existing variables like ROWS, COLS, etc.) ...
+
+const TEXTS = {
+    en: { 
+        title: "TACTICAL HUB", 
+        wf: "WHITE FUEL", 
+        bf: "BLACK FUEL", 
+        btnW: "WHITE (BOTTOM)", 
+        btnB: "BLACK (BOTTOM)", 
+        turn: "YOUR TURN", 
+        win: "ARENA SECURED", 
+        loss: "CRITICAL FAILURE",
+        restart: "SYSTEM REBOOT"
+    },
+    de: { 
+        title: "TAKTIK-ZENTRALE", 
+        wf: "WEISS ENERGIE", 
+        bf: "SCHWARZ ENERGIE", 
+        btnW: "WEISS (UNTEN)", 
+        btnB: "SCHWARZ (UNTEN)", 
+        turn: "DU BIST DRAN", 
+        win: "ARENA GESICHERT", 
+        loss: "SYSTEMFEHLER",
+        restart: "SYSTEM-NEUSTART"
+    }
+};
+let curLang = 'en';
+
+/**
+ * FIXED: setLang now correctly updates all UI elements
+ */
+
+}
+
+function updateHUD() {
+    const prompt = document.getElementById('turn-prompt');
+    prompt.style.display = (turn === playerColor) ? 'block' : 'none';
+    prompt.innerText = TEXTS[curLang].turn;
+}
+
 function endGame(winner, reason) {
     gameActive = false;
+    const t = TEXTS[curLang];
     document.getElementById('victory-overlay').style.display = 'flex';
-    document.getElementById('victory-title').innerText = (winner === playerColor) ? "MISSION COMPLETE" : "CRITICAL FAILURE";
+    document.getElementById('victory-title').innerText = (winner === playerColor) ? t.win : t.loss;
     document.getElementById('victory-msg').innerText = reason;
+}
+
+// ... (Rest of your game engine) ...
+</script>
 }
 
 function executeMove(from, to) {
@@ -234,4 +318,5 @@ draw();
 </script>
 </body>
 </html>
+
 

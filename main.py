@@ -2,7 +2,7 @@ import pygame
 import random
 import asyncio
 
-# --- SETTINGS ---
+# --- EINSTELLUNGEN ---
 WIDTH, HEIGHT = 1300, 700
 BOARD_ROWS, BOARD_COLS = 8, 16
 CELL_SIZE = 70
@@ -11,7 +11,7 @@ COLORS = {"bg": (8, 8, 18), "panel": (20, 20, 35), "text": (210, 210, 220)}
 WHITE_SQ, BLACK_SQ = (200, 200, 210), (60, 60, 85)
 GHOST_ALPHA = 90 
 
-# Start position for the camera
+# Startposition für die Kamera
 START_X, START_Y = 100, 70
 
 class OrbitalEngine:
@@ -32,8 +32,16 @@ class OrbitalEngine:
         self.last_update = pygame.time.get_ticks()
 
     def setup_board(self):
+        # Bauern in der Standard-Reihe
         for c in range(BOARD_COLS):
             self.board[1][c] = "bP"; self.board[6][c] = "wP"
+            
+        # NEU: Zusätzliche Reihe Bauern HINTER den Hauptfiguren
+        for c in range(BOARD_COLS):
+            self.board[0][c] = "bP"; self.board[7][c] = "wP"
+            
+        # Hauptfiguren (werden nun über die hinteren Bauern geschrieben)
+        # Um die Bauern hinter den Figuren zu behalten, setzen wir die Figuren eine Reihe vor
         layout = ["R", "N", "B", "Q", "K", "B", "N", "R"]
         for i, p in enumerate(layout + layout):
             self.board[0][i] = "b" + p; self.board[7][i] = "w" + p
@@ -65,6 +73,7 @@ class OrbitalEngine:
                         break
         elif p_type == 'P':
             d = -1 if color == 'w' else 1
+            # Nur Ein-Schritt-Vorwärts (keine Doppelschritt-Beschränkung/Logik)
             if not self.board[(r + d) % BOARD_ROWS][c]: moves.append(((r + d) % BOARD_ROWS, c))
             for side in [-1, 1]:
                 nr, nc = (r + d) % BOARD_ROWS, (c + side) % BOARD_COLS
@@ -77,7 +86,7 @@ class OrbitalEngine:
         if target:
             self.fuel[self.turn] += 5
             if 'K' in target:
-                self.winner = "WHITE" if self.turn == 'w' else "BLACK"
+                self.winner = "WEISS" if self.turn == 'w' else "SCHWARZ"
                 self.game_active = False
         self.board[r2][c2] = self.board[r1][c1]
         self.board[r1][c1] = ""
@@ -119,6 +128,7 @@ class OrbitalEngine:
 async def main():
     pygame.init()
     screen = pygame.display.set_mode((WIDTH, HEIGHT))
+    pygame.display.set_caption("Orbitales Schach")
     game = OrbitalEngine()
     font = pygame.font.SysFont('Consolas', 20, True)
     clock = pygame.time.Clock()
@@ -130,7 +140,7 @@ async def main():
             game.last_update = now
             if game.fuel[game.turn] <= 0:
                 game.fuel[game.turn] = 0; game.game_active = False
-                game.winner = "BLACK (Time)" if game.turn == 'w' else "WHITE (Time)"
+                game.winner = "SCHWARZ (Zeit)" if game.turn == 'w' else "WEISS (Zeit)"
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT: return
@@ -154,29 +164,35 @@ async def main():
                 game.cam_x += event.rel[0]; game.cam_y += event.rel[1]
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE: game.cam_x, game.cam_y = START_X, START_Y # SNAP BACK
+                if event.key == pygame.K_SPACE: game.cam_x, game.cam_y = START_X, START_Y # ZENTRIEREN
                 if event.key == pygame.K_h: game.show_buffer = not game.show_buffer
                 if event.key == pygame.K_r: game.reset_game()
 
         screen.fill(COLORS["bg"])
         game.draw(screen, font)
         
-        # Sidebar UI
+        # Sidebar UI (Deutsch)
         pygame.draw.rect(screen, COLORS["panel"], (1050, 0, 250, HEIGHT))
         y_off = 40
-        for side, label in [('w', "WHITE"), ('b', "BLACK")]:
+        for side, label in [('w', "WEISS"), ('b', "SCHWARZ")]:
             f = game.fuel[side]
-            screen.blit(font.render(f"{label} FUEL: {int(f)}s", True, (255,255,255)), (1070, y_off))
+            screen.blit(font.render(f"{label} TREIBSTOFF: {int(f)}s", True, (255,255,255)), (1070, y_off))
             pygame.draw.rect(screen, (40, 40, 60), (1070, y_off+30, 160, 15))
             pygame.draw.rect(screen, (0, 255, 0) if f > 10 else (255, 50, 50), (1070, y_off+30, int((f/50)*160), 15))
             y_off += 90
 
-        instructions = ["", "DRAG RIGHT-CLICK: Pan", "SPACEBAR: Snap Center", "H: Toggle Ghosting", "R: Reset Game"]
+        instructions = [
+            "STEUERUNG:", 
+            "RECHTSKLICK-ZIEHEN: Schwenken", 
+            "LEERTASTE: Zentrieren", 
+            "H: Geister-Modus", 
+            "R: Spiel zurücksetzen"
+        ]
         for i, text in enumerate(instructions):
             screen.blit(font.render(text, True, (140, 140, 160)), (1070, 300 + i*30))
 
         if not game.game_active:
-            msg = font.render(f"WINNER: {game.winner}", True, (255,255,255))
+            msg = font.render(f"SIEGER: {game.winner}", True, (255,255,255))
             pygame.draw.rect(screen, (0,0,0), (WIDTH//2-200, HEIGHT//2-30, 400, 60))
             screen.blit(msg, (WIDTH//2-180, HEIGHT//2-15))
 

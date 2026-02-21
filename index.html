@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>VANGUARD: ORBITAL ARENA - FINAL</title>
+    <title>VANGUARD: ORBITAL CHESS </title>
     <style>
         :root { --bg: #020204; --panel: #0a0a0f; --accent: #d4af37; --text: #d2d2dc; }
         body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
@@ -28,7 +28,7 @@
 <body>
 
 <div id="overlay">
-    <h1 style="letter-spacing: 12px; color: var(--accent);">VANGUARD V4</h1>
+    <h1 style="letter-spacing: 12px; color: var(--accent);">VANGUARD </h1>
     <div id="lang-btns">
         <button class="btn" onclick="setLang('en')">ENGLISH</button>
         <button class="btn" onclick="setLang('de')">DEUTSCH</button>
@@ -98,7 +98,7 @@ function initBoard() {
 function endGame(winner, reason) {
     gameActive = false;
     document.getElementById('victory-overlay').style.display = 'flex';
-    document.getElementById('victory-title').innerText = (winner === playerColor) ? "ARENA SECURED" : "CRITICAL FAILURE";
+    document.getElementById('victory-title').innerText = (winner === playerColor) ? "ARENA SECURED" : "TIME OUT";
     document.getElementById('victory-msg').innerText = reason;
 }
 
@@ -241,4 +241,5 @@ draw();
 </script>
 </body>
 </html>
+
 
